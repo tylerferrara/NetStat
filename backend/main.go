@@ -15,9 +15,10 @@ import (
 
 // TODO: SQL ATTACK PREVENTION (aka: sanitize all inputs)
 
-// Postgresql's timestamp format (for parsing)
+// Postgresql's timestamp format
 const timeFormat = "2006-01-02T15:04:05Z07:00"
 
+// sendResult sends a JSON payload to the given response writer
 func sendResult(w http.ResponseWriter, v interface{}) {
 	reply, err := json.Marshal(v)
 	if err != nil {
@@ -26,7 +27,13 @@ func sendResult(w http.ResponseWriter, v interface{}) {
 	fmt.Fprintf(w, "%s", reply)
 }
 
+// ROUTE: /login
 func loginHandler(w http.ResponseWriter, r *http.Request) {
+	/* Validation
+	- cridentials match
+	- citizen is registered
+	- citizen has not voted
+	*/
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -68,7 +75,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	sendResult(w, pay)
 }
 
+// ROUTE: /register
 func registerHandler(w http.ResponseWriter, r *http.Request) {
+	/* Validation
+	- citizen exits
+	- citizen has not registered
+	- citizen has not voted (edge case)
+	*/
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -141,7 +154,15 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	sendResult(w, pay)
 }
 
+// ROUTE: /vote
 func voteHandler(w http.ResponseWriter, r *http.Request) {
+	/* Validation
+	- candidate exists
+	- citizen exits
+	- citizen is registered
+	- citizen has not voted
+	- vote is cast within election time window
+	*/
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -265,7 +286,13 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	sendResult(w, pay)
 }
 
+// ROUTE: /results
 func resultsHandler(w http.ResponseWriter, r *http.Request) {
+	/* Validation
+	- candidate exists
+	- candidate belongs to an election
+	- checks all votes are within election time window
+	*/
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -353,6 +380,7 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 	sendResult(w, pay)
 }
 
+// mountDB retrieves an open connection to the SQL database
 func mountDB() *sql.DB {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
@@ -366,10 +394,11 @@ func mountDB() *sql.DB {
 }
 
 func main() {
+	// define routes
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/vote", voteHandler)
 	http.HandleFunc("/results", resultsHandler)
-
+	// start web server
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
