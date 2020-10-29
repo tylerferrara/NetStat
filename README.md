@@ -1,13 +1,12 @@
 # NetStat
 
-## Backend
 ### Install
 - [docker](https://docs.docker.com/engine/install/)
 - [docker-compose](https://docs.docker.com/compose/install/)
 
 ### Deployment
 
-Includes a Webserver and SQL Database
+Includes a Backend Service, Frontend Web Server and SQL Database
 ```sh
 git clone https://github.com/tylerferrara/NetStat
 cd ./NetStat/backend
