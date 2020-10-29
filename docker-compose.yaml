@@ -12,11 +12,11 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+      - ./backend/initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
     networks:
       - fullstack
-  app:
-    build: .
+  backend:
+    build: ./backend
     environment:
       PG_USER: ${DB_USER}
       PG_PASSWORD: ${DB_PASSWORD}
@@ -25,11 +25,20 @@ services:
       PG_HOST: ${DB_HOST}
     command: ["go", "run", "main.go"]
     volumes:
-      - .:/go/src/app
+      - ./backend:/go/src/app
     ports:
       - "8080:8080"
     depends_on:
       - db
+    networks:
+      - fullstack
+  frontend:
+    build: ./frontend
+    command: ["npm", "start"]
+    ports:
+      - 4680:3000
+    depends_on:
+      - backend
     networks:
       - fullstack
 networks:

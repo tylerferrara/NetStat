@@ -14,6 +14,8 @@ import (
 )
 
 // TODO: SQL ATTACK PREVENTION (aka: sanitize all inputs)
+// 			404 errors
+//			200 success
 
 // Postgresql's timestamp format
 const timeFormat = "2006-01-02T15:04:05Z07:00"
@@ -244,6 +246,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 	}
+	// centralize
 	now := time.Now()
 	var startTime, endTime time.Time
 	startTime, err = time.Parse(timeFormat, startStr)
@@ -300,7 +303,7 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 		Candidate string
 	}
 	type payload struct {
-		Candidate string
+		Candidate string // add a success and message
 		Votes     int
 		Final     bool
 	}
