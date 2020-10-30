@@ -24,6 +24,10 @@ const timeFormat = "2006-01-02T15:04:05Z07:00"
 func sendResult(w http.ResponseWriter, v interface{}) {
 	// enable CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT")
+	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers")
 	reply, err := json.Marshal(v)
 	if err != nil {
 		log.Println(err)
