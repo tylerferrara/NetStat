@@ -1,7 +1,8 @@
 import React from "react";
 import '../App.css';
+import {PostData} from '../serviceCalls.js';
 
-class HomePage extends React.Component {
+class Login extends React.Component {
 
     constructor() {
         super();
@@ -9,16 +10,57 @@ class HomePage extends React.Component {
             username: '',
             password: '',
             error: '',
+            loggedIn: false
         };
   
         this.handlePassChange = this.handlePassChange.bind(this);
         this.handleUserChange = this.handleUserChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
         this.dismissError = this.dismissError.bind(this);
+        this.pleaseLetMeIn = this.pleaseLetMeIn.bind(this);
+        this.pleaseRegisterMe = this.pleaseRegisterMe.bind(this); 
     }
   
     dismissError() {
         this.setState({ error: '' });
+    }
+    //curl -v -XGET -H "Content-type: application/json" -d '{"SSN": "111110", "DOB":"12/10/1991"}' 'localhost:8080/login'
+
+    //If we are already registered and want to log in, just log in
+    pleaseLetMeIn(){
+        console.log("Please let me in!");
+        let path = "login"; 
+        let myData = {'SSN': this.state.username, 'DOB': this.state.password};
+
+        PostData(path,myData).then((result) => {
+            let responseJson = result;
+            if(responseJson.eligible == true){
+                console.log("We're logged in!"); 
+                this.setState({loggedIn: true}); 
+                return true; 
+            }
+            else { return false; }
+            //if not, set error message
+        });
+    }
+
+    //If we are not registered and want to vote, we check on register
+    pleaseRegisterMe(){
+        console.log("Please register me!");
+        let path = "register"; 
+        let myData = {'SSN': this.state.username, 'DOB': this.state.password};
+
+        PostData(path,myData).then((result) => {
+            let responseJson = result;
+            if(responseJson.success){
+                console.log("We're registered!"); 
+                //now we log in 
+                this.pleaseLetMeIn; 
+                return true; 
+            }
+            //if not, set error message
+            else {return false;}
+        });
     }
   
     handleSubmit(evt) {
@@ -32,9 +74,14 @@ class HomePage extends React.Component {
             return this.setState({ error: 'Password is required' });
         }
 
+        if (!this.pleaseLetMeIn) {
+            console.log("This user is not registered!"); 
+            if (! this.pleaseRegisterMe) {
+                console.log("This user is not eligible!"); 
+                return this.setState({ error: 'This user is not eligible!' });
+            }
+        }
         return this.setState({ error: '' });
-
-        /* Send username and password to backend */ 
     }
   
     handleUserChange(evt) {
@@ -74,4 +121,4 @@ class HomePage extends React.Component {
     }
   }
   
-  export default HomePage;
+  export default Login;

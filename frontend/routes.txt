@@ -1,0 +1,18 @@
+/login 
+Request: SSN DOB 
+Response: SSN DOB ELIGIBLE
+Lets a user log in if ELIGIBLE = True
+
+
+
+/register
+Request: SSN DOB
+Response: SSN DOB SUCCESS MESSAGE
+Registers a user if valid and returns SUCCESS = True
+
+
+
+/vote
+Request: SSN DOB CANDIDATENAME
+Response: SSN DOB SUCCESS MESSAGE
+Inputs a user's vote and returns SUCCESS = True
