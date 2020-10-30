@@ -22,6 +22,8 @@ const timeFormat = "2006-01-02T15:04:05Z07:00"
 
 // sendResult sends a JSON payload to the given response writer
 func sendResult(w http.ResponseWriter, v interface{}) {
+	// enable CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	reply, err := json.Marshal(v)
 	if err != nil {
 		log.Println(err)
