@@ -7,104 +7,134 @@ class Login extends React.Component {
     constructor() {
         super();
         this.state = {
-            username: "",
-            password: "",
-            error: '',
-            loggedIn: false
+            ssn: '', 
+            dob: '',
+            isAuth: false
         };
   
-        this.handlePassChange = this.handlePassChange.bind(this);
-        this.handleUserChange = this.handleUserChange.bind(this);
-        this.handleSubmit = this.handleSubmit.bind(this);
+        this.handleSSNChange = this.handleSSNChange.bind(this);
+        this.handleDOBChange = this.handleDOBChange.bind(this);
         this.dismissError = this.dismissError.bind(this);
+        this.handleSubmit = this.handleSubmit.bind(this);
         this.pleaseLetMeIn = this.pleaseLetMeIn.bind(this);
         this.pleaseRegisterMe = this.pleaseRegisterMe.bind(this); 
     }
-  
-    dismissError() {
-        this.setState({ error: '' });
-    }
-    //curl -v -XGET -H "Content-type: application/json" -d '{"SSN": "111110", "DOB":"12/10/1991"}' 'localhost:8080/login'
 
-    //If we are already registered and want to log in, just log in
-    pleaseLetMeIn(){
-        console.log("Please let me in!");
+
+    async pleaseLetMeIn(ssn, dob) { 
+        //let's set up a response JSON 
+        console.log("---------------------- CHECKING LOG IN ----------------------");
         let path = "login"; 
-        let myData = {'SSN': this.state.username, 'DOB': this.state.password};
+        let myData = {'SSN': ssn, 'DOB': dob};
         console.log(myData); 
-
-        PostData(path,myData).then((result) => {
+    
+        await PostData(path,myData).then((result) => {
             let responseJson = result;
-            if(responseJson.Eligible == true){
-                console.log("--------We're logged in!-----------"); 
-                this.setState({loggedIn: true}); 
-                return true; 
+            //if the backend says we can log in
+            if(responseJson.Eligible){
+                console.log("--------Eligible!-----------"); 
+                let resp = {code: 200, message: "Valid User"}; 
+                this.state.Auth = true; 
+                return; 
             }
             else { 
-                console.log (responseJson.Eligible);
                 console.log (responseJson); 
-                this.setState({ error: responseJson.Message});
-                return false; }
+                let resp = {code: 400, message: "Invalid User"}; 
+                this.state.Auth = false; 
+                return;  
+            }
         });
-            //if not, set error message
-        
+               
     }
-
+    
     //If we are not registered and want to vote, we check on register
-    pleaseRegisterMe(){
-        console.log("Please register me!");
+    async pleaseRegisterMe(ssn, dob) { 
+        console.log("---------------------- CHECKING REGISTER ----------------------");
         let path = "register"; 
-        let myData = {"SSN": this.state.username, "DOB": this.state.password};
+        let myData = {'SSN': ssn, 'DOB': dob};
         console.log(myData); 
-
-        PostData(path,myData).then((result) => {
+    
+        await PostData(path,myData).then((result) => {
             let responseJson = result;
-            if(responseJson.Success == true){
-                console.log("----------We're registered!-----------"); 
-                //now we log in 
-                this.pleaseLetMeIn(); 
-                return true; 
+            //if the backend says we can log in
+            if(responseJson.Success){
+                console.log("--------Success!-----------"); 
+                let resp = {code: 200, message: "Can be logged in!"}; 
+                this.state.Auth = true; 
+                return; 
             }
-            //if not, set error message
             else { 
-                console.log (responseJson.Success);
                 console.log (responseJson); 
-                this.setState({ error: responseJson.Message});
-                return false; }
+                let resp = {code: 400, message: responseJson.Message}; 
+                this.state.Auth = false; 
+                return;  
+            }
         });
     }
   
     handleSubmit(evt) {
         evt.preventDefault();
         console.log("Clicked!"); 
-        if (!this.state.username) {
-            return this.setState({ error: 'Username is required' });
-        }
-  
-        if (!this.state.password) {
-            return this.setState({ error: 'Password is required' });
+
+        if (!this.state.ssn) {
+            return this.setState({ error: 'SSN is required' });
         }
 
-        if (!this.pleaseLetMeIn()) {
-            console.log("This user is not registered!"); 
-            if (!this.pleaseRegisterMe()) {
-                console.log("This user is not eligible!"); 
-                return this.setState({ error: 'This user is not eligible!' });
+        if (!this.state.dob) {
+            return this.setState({ error: 'Date of Birth is required' });
+        }
+
+        this.pleaseLetMeIn(this.state.ssn, this.state.dob); 
+        console.log(this.state.isAuth); 
+        
+        if (this.state.isAuth){
+            console.log("We are done!");
+            window.localStorage.setItem("Auth", true); 
+            return this.setState({ error: '' }); 
+        }
+
+        else if (!this.state.isAuth){
+
+            this.pleaseRegisterMe(this.state.ssn, this.state.dob); 
+            console.log(this.state.isAuth); 
+
+            if (this.state.isAuth){
+
+                this.pleaseLetMeIn(this.state.ssn, this.state.dob);
+                console.log(this.state.isAuth); 
+
+                if (this.state.isAuth){
+                    window.localStorage.setItem("Auth", true); 
+                    return this.setState({ error: '' });
+                }
+                else if (!this.state.isAuth) {
+                    window.localStorage.setItem("Auth", false);
+                    return this.setState({ error: 'Failed Auth!' }); 
+                }
+            }
+            else if (!this.state.isAuth){
+                window.localStorage.setItem("Auth", false);
+                return this.setState({ error: 'Failed Auth!' }); 
             }
         }
+
         return this.setState({ error: '' });
     }
   
-    handleUserChange(evt) {
+    handleSSNChange(evt) {
         this.setState({
-            username: evt.target.value,
+            ssn: evt.target.value,
         });
     };
   
-    handlePassChange(evt) {
+    handleDOBChange(evt) {
         this.setState({
-        password: evt.target.value,
+            dob: evt.target.value,
         });
+    }
+
+    dismissError() {
+        this.setState({ error: '' });
     }
   
     render() {
@@ -115,19 +145,19 @@ class Login extends React.Component {
                     this.state.error &&
                     <h3 data-test="error" onClick={this.dismissError}>
                         <button onClick={this.dismissError}>✖</button>
-                    {this.state.error}
+                        {this.state.error}
                     </h3>
                 }   
             
-            <label>User Name</label>
-            <input type="text" data-test="username" value={this.state.username} onChange={this.handleUserChange} />
+                    <label>SSN: </label>
+                    <input type="text" data-test="ssn" value={this.state.ssn} onChange={this.handleSSNChange} />
 
-            <label>Password</label>
-            <input type="password" data-test="password" value={this.state.password} onChange={this.handlePassChange} />
-  
-            <input type="submit" value="Log In" data-test="submit" />
-          </form>
-        </div>
+                    <label>DOB: </label>
+                    <input type="text" data-test="dob" value={this.state.dob} onChange={this.handleDOBChange} />
+        
+                    <input type="submit" value="Log In" data-test="submit" />
+                </form>
+            </div>
       );
     }
   }

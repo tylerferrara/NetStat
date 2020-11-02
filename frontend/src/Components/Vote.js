@@ -14,7 +14,8 @@ class Vote extends React.Component {
         ssn: "111110",
         dob: "12/10/1991",
         candidateClicked: -1,
-        isConfirmed: false
+        isConfirmed: false, 
+        isDone : false
       };
 
       this.whichCandidateDidIVoteFor = this.whichCandidateDidIVoteFor.bind(this);
@@ -72,6 +73,10 @@ class Vote extends React.Component {
 
     confirmSubmission = () => {
         console.log('Click!!!!');
+        if (this.state.isDone){
+          return; 
+        }
+
         this.setState({
           isConfirmed: true
         })
@@ -87,7 +92,7 @@ class Vote extends React.Component {
                     (this.state.candidateClicked ==0) &&
                     <div>You clicked Minushka!
                         <Button onClick={this.confirmSubmission}> Confirm </Button> {
-                            this.state.isConfirmed && <div> "You're Confirmed for Minushka!" </div>
+                            this.state.isConfirmed && !this.state.isDone && <div> "You're Confirmed for Minushka!" </div>
                         }
                     </div>
                 }
@@ -98,7 +103,7 @@ class Vote extends React.Component {
                     (this.state.candidateClicked ==1) &&
                     <div>You clicked Zach!
                         <Button onClick={this.confirmSubmission}> Confirm </Button> {
-                            this.state.isConfirmed && <div> "You're Confirmed for Zach!" </div>
+                            this.state.isConfirmed && !this.state.isDone && <div> "You're Confirmed for Zach!" </div>
                         }
                     </div>
                 }
