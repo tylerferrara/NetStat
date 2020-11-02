@@ -22,13 +22,18 @@ import (
 const timeFormat = "2006-01-02T15:04:05Z07:00"
 
 // sendResult sends a JSON payload to the given response writer
-func sendResult(w http.ResponseWriter, v interface{}) {
+func sendResult(w http.ResponseWriter, v interface{}, success bool) {
+	var statCode = 404
+	if success {
+		statCode = 200
+	}
 	// enable CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT")
 	w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers")
+	w.WriteHeader(statCode)
 	reply, err := json.Marshal(v)
 	if err != nil {
 		log.Println(err)
@@ -43,6 +48,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	- citizen is registered
 	- citizen has not voted
 	*/
+	// handle pre-flight requests
+	if r.Method == "OPTIONS" {
+		sendResult(w, "", true)
+		return
+	}
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -61,14 +71,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	respRaw, respErr := ioutil.ReadAll(r.Body)
 	if respErr != nil {
 		log.Println(respErr)
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	json.Unmarshal(respRaw, &respData)
 	// sanitize
 	if errs := validator.Validate(respData); errs != nil {
 		log.Println(errs)
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	// create query
@@ -90,7 +100,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		pay.Eligible = true
 	}
 	// send JSON
-	sendResult(w, pay)
+	sendResult(w, pay, true)
 }
 
 // ROUTE: /register
@@ -100,6 +110,11 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	- citizen has not registered
 	- citizen has not voted (edge case)
 	*/
+	// handle pre-flight requests
+	if r.Method == "OPTIONS" {
+		sendResult(w, "", true)
+		return
+	}
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -120,7 +135,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if respErr != nil {
 		log.Println(respErr)
 		pay.Message = "Malformed JSON"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	json.Unmarshal(respRaw, &respData)
@@ -128,7 +143,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if errs := validator.Validate(respData); errs != nil {
 		log.Println(errs)
 		pay.Message = "Invalid input format"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	pay.SSN, pay.DOB = respData.SSN, respData.DOB
@@ -146,12 +161,12 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if ssn != respData.SSN || dob != respData.DOB {
 		pay.Message = "Not a citizen"
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
 	if isRegistered {
 		pay.Message = "Already registered"
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
 	if hasVoted {
@@ -159,7 +174,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("[CRITICAL] citizen voted without registering!")
 		log.Println(respData)
 		pay.Message = "Already voted"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 
@@ -170,13 +185,12 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(respData)
 		log.Println(execErr)
 		pay.Message = "Encountered an error trying to register"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	pay.Success = true
 	pay.Message = "Citizen is now registered"
-
-	sendResult(w, pay)
+	sendResult(w, pay, true)
 }
 
 // ROUTE: /vote
@@ -188,6 +202,11 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	- citizen has not voted
 	- vote is cast within election time window
 	*/
+	// handle pre-flight requests
+	if r.Method == "OPTIONS" {
+		sendResult(w, "", true)
+		return
+	}
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -209,7 +228,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	if respErr != nil {
 		log.Println(respErr)
 		pay.Message = "Malformed JSON"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	json.Unmarshal(respRaw, &respData)
@@ -217,7 +236,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	if errs := validator.Validate(respData); errs != nil {
 		log.Println(errs)
 		pay.Message = "Invalid input format"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	pay.SSN, pay.DOB = respData.SSN, respData.DOB
@@ -237,20 +256,19 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	// validate citizen
 	if respData.SSN != ssn || respData.DOB != dob {
 		pay.Message = "Not a citizen"
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
 	if !isRegistered {
 		pay.Message = "Not registered"
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
 	if hasVoted {
 		pay.Message = "Citizen already voted"
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
-
 	query = "SELECT id, fk_election, name FROM candidate WHERE name=$1;"
 	row = db.QueryRow(query, respData.Candidate)
 	var candidate string
@@ -264,10 +282,9 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if candidate == "" || candidate != respData.Candidate {
 		pay.Message = "Invalid candidate"
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
-
 	query = "SELECT start_time, end_time FROM election WHERE id=$1;"
 	row = db.QueryRow(query, fkElection)
 	var startStr, endStr string
@@ -289,36 +306,32 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	if now.After(endTime) || now.Before(startTime) {
 		pay.Message = "Vote is outside of election time window"
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
-
 	// mark citizen as voted
 	query = "UPDATE citizen SET has_voted=TRUE WHERE ssn=$1 AND dob=$2;"
 	_, execErr := db.Exec(query, ssn, dob)
 	if execErr != nil {
 		log.Println(execErr)
 		pay.Message = "Encountered an error trying to cast vote"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
-
 	// create new vote
 	query = "INSERT INTO vote (fk_election, fk_citizen, fk_candidate, vote_time) VALUES ($1, $2, $3, current_timestamp);"
 	_, resErr := db.Exec(query, fkElection, pkCitizen, pkCandidate)
 	if resErr != nil {
 		log.Println(resErr)
 		pay.Message = "Encountered an error trying to insert vote"
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
-
 	pay.Success = true
 	pay.Message = "Vote counted"
-	sendResult(w, pay)
+	sendResult(w, pay, true)
 }
 
 // ROUTE: /results
@@ -328,6 +341,11 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 	- candidate belongs to an election
 	- checks all votes are within election time window
 	*/
+	// handle pre-flight requests
+	if r.Method == "OPTIONS" {
+		sendResult(w, "", true)
+		return
+	}
 	db := mountDB()
 	defer db.Close()
 	// define JSON structures
@@ -345,14 +363,14 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 	respRaw, respErr := ioutil.ReadAll(r.Body)
 	if respErr != nil {
 		log.Println(respErr)
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	json.Unmarshal(respRaw, &respData)
 	// sanitize
 	if errs := validator.Validate(respData); errs != nil {
 		log.Println(errs)
-		sendResult(w, pay)
+		sendResult(w, pay, false)
 		return
 	}
 	pay.Candidate = respData.Candidate
@@ -370,7 +388,7 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if candidate == "" || candidate != respData.Candidate {
 		pay.Candidate = ""
-		sendResult(w, pay)
+		sendResult(w, pay, true)
 		return
 	}
 	// check election end timestamp
@@ -405,7 +423,7 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&voteStr); err != nil {
 			log.Println("[ERROR] Unable to scan vote!")
 			pay.Votes = -1
-			sendResult(w, pay)
+			sendResult(w, pay, false)
 			return
 		}
 		voteTime, tErr := time.Parse(timeFormat, voteStr)
@@ -413,14 +431,14 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("[ERROR] Unable to read vote time!")
 			log.Println(tErr)
 			pay.Votes = -1
-			sendResult(w, pay)
+			sendResult(w, pay, false)
 			return
 		}
 		if voteTime.Before(endTime) {
 			pay.Votes = pay.Votes + 1
 		}
 	}
-	sendResult(w, pay)
+	sendResult(w, pay, true)
 }
 
 // mountDB retrieves an open connection to the SQL database
