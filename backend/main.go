@@ -11,6 +11,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	validator "gopkg.in/validator.v2"
 )
 
 // TODO: SQL ATTACK PREVENTION (aka: sanitize all inputs)
@@ -46,8 +47,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	// define JSON structures
 	type response struct {
-		SSN string
-		DOB string
+		SSN string `validate:"max=6,regexp=^[0-9]*$"`
+		DOB string `validate:"max=10,regexp=^(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])-(19|20)[0-9][0-9]$"`
 	}
 	type payload struct {
 		SSN      string
@@ -55,12 +56,21 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		Eligible bool
 	}
 	// read response data
+	var pay = payload{"", "", false}
 	var respData response
 	respRaw, respErr := ioutil.ReadAll(r.Body)
 	if respErr != nil {
 		log.Println(respErr)
+		sendResult(w, pay)
+		return
 	}
 	json.Unmarshal(respRaw, &respData)
+	// sanitize
+	if errs := validator.Validate(respData); errs != nil {
+		log.Println(errs)
+		sendResult(w, pay)
+		return
+	}
 	// create query
 	query := "SELECT SSN, DOB, is_registered, has_voted FROM citizen WHERE ssn=$1 AND dob=$2;"
 	row := db.QueryRow(query, respData.SSN, respData.DOB)
@@ -75,7 +85,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// form response
-	var pay = payload{respData.SSN, respData.DOB, false}
+	pay.SSN, pay.DOB = respData.SSN, respData.DOB
 	if ssn == respData.SSN && dob == respData.DOB && isRegistered && !hasVoted {
 		pay.Eligible = true
 	}
@@ -94,8 +104,8 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	// define JSON structures
 	type response struct {
-		SSN string
-		DOB string
+		SSN string `validate:"max=6,regexp=^[0-9]*$"`
+		DOB string `validate:"max=10,regexp=^(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])-(19|20)[0-9][0-9]$"`
 	}
 	type payload struct {
 		SSN     string
@@ -109,12 +119,19 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	respRaw, respErr := ioutil.ReadAll(r.Body)
 	if respErr != nil {
 		log.Println(respErr)
+		pay.Message = "Malformed JSON"
 		sendResult(w, pay)
 		return
 	}
 	json.Unmarshal(respRaw, &respData)
-	pay.SSN = respData.SSN
-	pay.DOB = respData.DOB
+	// sanitize
+	if errs := validator.Validate(respData); errs != nil {
+		log.Println(errs)
+		pay.Message = "Invalid input format"
+		sendResult(w, pay)
+		return
+	}
+	pay.SSN, pay.DOB = respData.SSN, respData.DOB
 	// does this citizen exist?
 	query := "SELECT SSN, DOB, is_registered, has_voted FROM citizen WHERE ssn=$1 AND dob=$2;"
 	row := db.QueryRow(query, respData.SSN, respData.DOB)
@@ -175,9 +192,9 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	// define JSON structures
 	type response struct {
-		SSN       string
-		DOB       string
-		Candidate string
+		SSN       string `validate:"max=6,regexp=^[0-9]*$"`
+		DOB       string `validate:"max=10,regexp=^(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])-(19|20)[0-9][0-9]$"`
+		Candidate string `validate:"max=20,regexp^[a-zA-Z]*$"`
 	}
 	type payload struct {
 		SSN     string
@@ -185,16 +202,25 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 		Success bool
 		Message string
 	}
-	var pay = payload{"", "", false, ""}
 	// read response data
+	var pay = payload{"", "", false, ""}
 	var respData response
 	respRaw, respErr := ioutil.ReadAll(r.Body)
 	if respErr != nil {
 		log.Println(respErr)
+		pay.Message = "Malformed JSON"
+		sendResult(w, pay)
+		return
 	}
 	json.Unmarshal(respRaw, &respData)
-	pay.SSN = respData.SSN
-	pay.DOB = respData.DOB
+	// sanitize
+	if errs := validator.Validate(respData); errs != nil {
+		log.Println(errs)
+		pay.Message = "Invalid input format"
+		sendResult(w, pay)
+		return
+	}
+	pay.SSN, pay.DOB = respData.SSN, respData.DOB
 	// get citizen
 	query := "SELECT id, SSN, DOB, is_registered, has_voted FROM citizen WHERE ssn=$1 AND dob=$2;"
 	row := db.QueryRow(query, respData.SSN, respData.DOB)
@@ -236,7 +262,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 	}
-	if candidate != respData.Candidate {
+	if candidate == "" || candidate != respData.Candidate {
 		pay.Message = "Invalid candidate"
 		sendResult(w, pay)
 		return
@@ -306,7 +332,7 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 	// define JSON structures
 	type response struct {
-		Candidate string
+		Candidate string `validate:"max=20,regexp=^[a-zA-Z]*$"`
 	}
 	type payload struct {
 		Candidate string // add a success and message
@@ -315,27 +341,35 @@ func resultsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// read response data
 	var pay = payload{"", 0, false}
-
 	var respData response
 	respRaw, respErr := ioutil.ReadAll(r.Body)
 	if respErr != nil {
 		log.Println(respErr)
+		sendResult(w, pay)
+		return
 	}
 	json.Unmarshal(respRaw, &respData)
+	// sanitize
+	if errs := validator.Validate(respData); errs != nil {
+		log.Println(errs)
+		sendResult(w, pay)
+		return
+	}
 	pay.Candidate = respData.Candidate
 	// get the candidate and election primary keys
 	query := "SELECT id, fk_election, name FROM candidate WHERE name=$1;"
 	row := db.QueryRow(query, respData.Candidate)
 	var pkCandidate, pkElection int
-	var canidate string
-	err := row.Scan(&pkCandidate, &pkElection, &canidate)
+	var candidate string
+	err := row.Scan(&pkCandidate, &pkElection, &candidate)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Printf("Error when querying: %s\n", query)
 			log.Println(err)
 		}
 	}
-	if canidate != respData.Candidate {
+	if candidate == "" || candidate != respData.Candidate {
+		pay.Candidate = ""
 		sendResult(w, pay)
 		return
 	}
