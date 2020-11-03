@@ -2,6 +2,7 @@ import React from 'react';
 import Button from 'react-bootstrap/Button'
 import '../App.css';
 import {PostData} from '../serviceCalls.js';
+import {withRouter} from 'react-router-dom'
 
 import Minush from '../Assets/Minushka.jpg'
 import Zach from '../Assets/Zach.jpg'
@@ -11,8 +12,8 @@ class Vote extends React.Component {
     constructor(props){
       super(props);
       this.state = {
-        ssn: "111110",
-        dob: "12/10/1991",
+        ssn: this.props.history.location.state.ssn,
+        dob: this.props.history.location.state.dob,
         candidateClicked: -1,
         isConfirmed: false, 
         isDone : false
@@ -35,7 +36,6 @@ class Vote extends React.Component {
 
     //Changes the candidate voted for when clicked
     minushClick = () => {
-      console.log('Click!!!!');
       this.setState({
         candidateClicked : 0,
       })
@@ -43,7 +43,6 @@ class Vote extends React.Component {
     
     //Changes the candidate voted for when clicked
     zachClick = () => {
-        console.log('Click!!!!');
         this.setState({
           candidateClicked : 1,
         })
@@ -51,7 +50,6 @@ class Vote extends React.Component {
 
     //Sends the REST call to submit vote
     submittingMyVote() {
-      console.log('Submitting!'); 
       let path = "vote"; 
       let myData = {"SSN": this.state.ssn, "DOB": this.state.dob, "Candidate": this.whichCandidateDidIVoteFor()};
 
@@ -59,11 +57,9 @@ class Vote extends React.Component {
         let responseJson = result;
         if(responseJson.Success == true){
             console.log (responseJson);
-            console.log("--------We have voted!-----------"); 
             return true; 
         }
         else { 
-            console.log (responseJson.Success);
             console.log (responseJson); 
             this.setState({ error: responseJson.Message});
             return false; }
@@ -72,7 +68,6 @@ class Vote extends React.Component {
 
 
     confirmSubmission = () => {
-        console.log('Click!!!!');
         if (this.state.isDone){
           return; 
         }
@@ -87,6 +82,7 @@ class Vote extends React.Component {
       return (
         <div>
             <div>
+              <div>User is: {this.state.ssn} and  {this.state.dob} </div>
                 <img src={Minush} onClick={this.minushClick} width = "300"/>
                 {
                     (this.state.candidateClicked ==0) &&
@@ -113,4 +109,4 @@ class Vote extends React.Component {
     }
   }
 
-  export default Vote;
+  export default withRouter(Vote);
