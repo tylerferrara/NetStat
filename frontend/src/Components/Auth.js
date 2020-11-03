@@ -14,6 +14,7 @@ export async function isAllowed(ssn, dob) {
         if(responseJson.Eligible){
             console.log (responseJson);  
             canLogIn = true; 
+            isRegistered = true; 
         }
         else { 
             console.log (responseJson);   
