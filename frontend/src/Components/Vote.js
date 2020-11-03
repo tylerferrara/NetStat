@@ -16,7 +16,8 @@ class Vote extends React.Component {
         dob: this.props.history.location.state.dob,
         candidateClicked: -1,
         isConfirmed: false, 
-        isDone : false
+        hasVoted: false,
+        error: ''
       };
 
       this.whichCandidateDidIVoteFor = this.whichCandidateDidIVoteFor.bind(this);
@@ -25,10 +26,10 @@ class Vote extends React.Component {
   
     //hardcoded portion to return candidate string
     whichCandidateDidIVoteFor() {
-      if (this.state.candidateClicked == 0 && this.state.isConfirmed == true){
+      if (this.state.candidateClicked == 0 && this.state.isConfirmed  && !this.state.hasVoted){
         return "Minushka";
       }
-      if (this.state.candidateClicked == 1 && this.state.isConfirmed == true){
+      if (this.state.candidateClicked == 1 && this.state.isConfirmed && !this.state.hasVoted){
         return "Zach";
       }
       else return ""; 
@@ -49,15 +50,19 @@ class Vote extends React.Component {
     } 
 
     //Sends the REST call to submit vote
-    submittingMyVote() {
+    async submittingMyVote() {
       let path = "vote"; 
       let myData = {"SSN": this.state.ssn, "DOB": this.state.dob, "Candidate": this.whichCandidateDidIVoteFor()};
 
-      PostData(path,myData).then((result) => {
+      await PostData(path,myData).then((result) => {
         let responseJson = result;
         if(responseJson.Success == true){
             console.log (responseJson);
-            return true; 
+            this.setState({ error: responseJson.Message});
+            this.setState({
+              isConfirmed : true,
+              hasVoted: true
+            })
         }
         else { 
             console.log (responseJson); 
@@ -67,28 +72,27 @@ class Vote extends React.Component {
     }
 
 
-    confirmSubmission = () => {
-        if (this.state.isDone){
+    confirmSubmission = async () => {
+        if (this.state.isDone && this.state.isConfirmed){
+          console.log("Already voted!"); 
           return; 
         }
-
-        this.setState({
-          isConfirmed: true
-        })
-        this.submittingMyVote(); 
+        console.log("Gonna vote!"); 
+        await this.submittingMyVote(); 
     } 
   
     render () {
       return (
         <div>
             <div>
-              <div>User is: {this.state.ssn} and  {this.state.dob} </div>
+              <div>User is: {this.state.ssn} and  {this.state.dob}. {this.state.error}</div>
                 <img src={Minush} onClick={this.minushClick} width = "300"/>
                 {
-                    (this.state.candidateClicked ==0) &&
+                  
+                    (this.state.candidateClicked ==0 && !this.state.isDone && !this.state.hasVoted) && //only show if we are allowed to vote
                     <div>You clicked Minushka!
                         <Button onClick={this.confirmSubmission}> Confirm </Button> {
-                            this.state.isConfirmed && !this.state.isDone && <div> "You're Confirmed for Minushka!" </div>
+                            this.state.isConfirmed && !this.state.isDone && !this.state.hasVoted  &&<div> "You're Confirmed for Minushka!" {this.state.error}</div>
                         }
                     </div>
                 }
@@ -96,10 +100,10 @@ class Vote extends React.Component {
             <div>
                 <img src={Zach} onClick={this.zachClick} width = "300"/>
                 {
-                    (this.state.candidateClicked ==1) &&
+                    (this.state.candidateClicked ==1 && !this.state.isDone && !this.state.hasVoted) && //only show if we are allowed to vote
                     <div>You clicked Zach!
                         <Button onClick={this.confirmSubmission}> Confirm </Button> {
-                            this.state.isConfirmed && !this.state.isDone && <div> "You're Confirmed for Zach!" </div>
+                            this.state.isConfirmed && !this.state.isDone && !this.state.hasVoted && <div> "You're Confirmed for Zach!" {this.state.error}</div>
                         }
                     </div>
                 }
