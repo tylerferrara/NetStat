@@ -38,7 +38,7 @@ export async function isAllowed(ssn, dob) {
         });
     }
 
-    if (isRegistered){
+    if (isRegistered && !canLogIn){
         let path = "login"; 
         let myData = {'SSN': ssn, 'DOB': dob};
 
