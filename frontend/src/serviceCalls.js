@@ -5,9 +5,6 @@ export async function PostData(path, userData) { //String path, userDate in JSON
     let res = 
         await fetch(url+path, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json;charset=utf-8'
-            },
             body: JSON.stringify(userData)
        }).then((response) => response.json())
     
