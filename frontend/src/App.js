@@ -1,9 +1,9 @@
 import './App.css';
 
 import { BrowserRouter, Route, Switch } from 'react-router-dom';
-
 import Home from "./Components/HomePage";
 import Vote from "./Components/Vote";
+
 
 function App() {
   return (
