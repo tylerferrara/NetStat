@@ -16,4 +16,6 @@ docker-compose build
 docker-compose --env-file .env up
 # stop
 docker-compose down
+# developing
+docker-compose -f dev.yaml --env-file .env up
 ```
