@@ -213,7 +213,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		SSN       string `validate:"max=6,regexp=^[0-9]*$"`
 		DOB       string `validate:"max=10,regexp=^(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])-(19|20)[0-9][0-9]$"`
-		Candidate string `validate:"max=20,regexp^[a-zA-Z]*$"`
+		Candidate string `validate:"max=20,regexp=^[a-zA-Z]*$"`
 	}
 	type payload struct {
 		SSN     string
