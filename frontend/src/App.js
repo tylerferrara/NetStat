@@ -68,5 +68,10 @@ render() {
   )
   }
 }
+<<<<<<< HEAD
 export default withRouter(App);
 // <Route path="/vote" render={props => (<Vote {...props} ssn = {this.state.ssn} dob = {this.state.dob} />)}></Route>
+=======
+
+export default App;
+>>>>>>> ed7ef8652316eb479b43e34c2515c3df4cc06afa
