@@ -26,10 +26,10 @@ class Vote extends React.Component {
   
     //hardcoded portion to return candidate string
     whichCandidateDidIVoteFor() {
-      if (this.state.candidateClicked == 0 && this.state.isConfirmed  && !this.state.hasVoted){
+      if (this.state.candidateClicked == 0 ){
         return "Minushka";
       }
-      if (this.state.candidateClicked == 1 && this.state.isConfirmed && !this.state.hasVoted){
+      if (this.state.candidateClicked == 1 ){
         return "Zach";
       }
       else return ""; 
