@@ -32,25 +32,9 @@ class HomePage extends React.Component {
             return this.setState({ error: 'Password is required' });
         }
 
-        /* Send username and password to backend */
-        var payload = {"SSN": this.state.username, "DOB": this.state.password};
-        fetch(
-            'http://localhost:8080/login', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json;charset=utf-8'
-                },
-                body: JSON.stringify(payload)
-        }).then(data => data.json())
-        .then(result => {
-            console.log(result)
-            if (result != null && result.Eligible) {
-                console.log("YAY!!")
-            }
-        })
-        .catch(err => console.log(err))
-
         return this.setState({ error: '' });
+
+        /* Send username and password to backend */ 
     }
   
     handleUserChange(evt) {
