@@ -40,6 +40,6 @@ INSERT INTO candidate (fk_election, name) VALUES (1, 'Zach');
 
 -- GENERATE CITIZENS
 
-INSERT INTO citizen (SSN, DOB, is_registered, has_voted) VALUES ('111110', '12/10/1991', TRUE, FALSE);
-INSERT INTO citizen (SSN, DOB, is_registered, has_voted) VALUES ('111111', '01/21/1977', FALSE, FALSE);
-INSERT INTO citizen (SSN, DOB, is_registered, has_voted) VALUES ('111112', '06/07/1986', FALSE, FALSE);
+INSERT INTO citizen (SSN, DOB, is_registered, has_voted) VALUES ('111110', '12-10-1991', TRUE, FALSE);
+INSERT INTO citizen (SSN, DOB, is_registered, has_voted) VALUES ('111111', '01-21-1977', FALSE, FALSE);
+INSERT INTO citizen (SSN, DOB, is_registered, has_voted) VALUES ('111112', '06-07-1986', FALSE, FALSE);
