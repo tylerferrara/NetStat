@@ -3,7 +3,7 @@
 version: '3.1'
 services:
   db:
-    image: postgres
+    image: postgres:alpine
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -23,22 +23,13 @@ services:
       PG_DB: ${DB_NAME}
       PG_PORT: ${DB_PORT}
       PG_HOST: ${DB_HOST}
-    command: ["go", "run", "main.go"]
+    command: ["/go/bin/back"]
     volumes:
       - ./backend:/go/src/app
     ports:
       - "8080:8080"
     depends_on:
       - db
-    networks:
-      - fullstack
-  frontend:
-    build: ./frontend
-    command: ["npm", "start"]
-    ports:
-      - 4680:3000
-    depends_on:
-      - backend
     networks:
       - fullstack
 networks:
