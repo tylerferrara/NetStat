@@ -32,6 +32,16 @@ services:
       - db
     networks:
       - fullstack
+  frontend:
+      build: ./frontend
+      environment:
+        DEV: ${DEV}
+      ports:
+        - "8081:80"
+      depends_on:
+        - backend
+      networks:
+        - fullstack
 networks:
   fullstack:
     driver: bridge

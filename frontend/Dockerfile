@@ -2,21 +2,11 @@
 # npm run build
 
 # pull official base image
-FROM node:slim
+FROM nginx:alpine
 
-# set working directory
-WORKDIR /app
+COPY ./build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# add `/app/node_modules/.bin` to $PATH
-ENV PATH /app/node_modules/.bin:$PATH
+EXPOSE 80
 
-# install app dependencies
-COPY build ./
-RUN npm install --silent
-RUN npm install react-scripts@3.4.1 -g --silent
-
-# add app
-COPY . ./
-
-# start app
-CMD ["npm", "start"]
+ENTRYPOINT [ "nginx", "-g", "daemon off;" ]
