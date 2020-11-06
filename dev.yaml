@@ -1,0 +1,50 @@
+# docker-compose build
+# docker-compose --env-file .env up
+version: '3.1'
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      DATABASE_HOST: ${DB_HOST}
+    ports:
+      - 5432:5432
+    volumes:
+      - ./backend/initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+    networks:
+      - fullstack
+  backend:
+    build: ./backend
+    environment:
+      PG_USER: ${DB_USER}
+      PG_PASSWORD: ${DB_PASSWORD}
+      PG_DB: ${DB_NAME}
+      PG_PORT: ${DB_PORT}
+      PG_HOST: ${DB_HOST}
+    command: ["go", "run", "main.go"]
+    volumes:
+      - ./backend:/go/src/app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - fullstack
+  frontend:
+    build: ./frontend
+    environment:
+        PG_USER: ${DEV}
+    command: ["npm", "start"]
+    volumes:
+        - ./frontend:/app
+    ports:
+      - 8081:3000
+    depends_on:
+      - backend
+    networks:
+      - fullstack
+networks:
+  fullstack:
+    driver: bridge
