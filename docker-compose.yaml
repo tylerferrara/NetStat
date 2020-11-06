@@ -37,7 +37,7 @@ services:
       environment:
         DEV: ${DEV}
       ports:
-        - "8081:80"
+        - "80:80"
       depends_on:
         - backend
       networks:
