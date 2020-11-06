@@ -10,13 +10,24 @@ class Login extends React.Component {
             ssn: '',
             dob: '',
             error: '',
-            isAuth: false
+            isAuth: false,
+            votePayload: {
+                "Minushka": 0,
+                "Zach": 0,
+                "Final": false,
+            }
         }
   
         this.handleSSNChange = this.handleSSNChange.bind(this);
         this.handleDOBChange = this.handleDOBChange.bind(this);
         this.dismissError = this.dismissError.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
+    }
+
+    componentDidMount() {
+        this.props.getVotes(result => {
+            this.setState({votePayload: result});
+        })
     }
   
     handleSSNChange(evt) {
@@ -63,6 +74,11 @@ class Login extends React.Component {
         
                     <input type="submit" value="Log In" data-test="submit" />
                 </form>
+                <div>
+                    <h3>{ (this.state.votePayload.Final ? "Final " : "Ongoing ")}Election Votes</h3>
+                    <h5>{ "Minushka: " + this.state.votePayload.Minushka + "\n" }</h5>
+                    <h5>{ "Zach: " + this.state.votePayload.Zach + "\n" }</h5>
+                </div>
             </div>
       );
     }

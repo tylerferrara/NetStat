@@ -1,4 +1,25 @@
 import {PostData} from "../serviceCalls"; 
+
+export function getVotes(callback) {
+    let result = {
+        "Minushka": 0,
+        "Zach": 0,
+        "Final": false,
+    };
+    // get the cat's votes first
+    let path = "results"; 
+    PostData(path,{'Candidate': 'Minushka'}).then((res) => {
+        result.Minushka = res.Votes
+        result.Final = res.Final
+
+        PostData(path,{'Candidate': 'Zach'}).then((r) => {
+            result.Zach = r.Votes
+
+            callback(result)
+        });
+    });
+}
+
 export async function isAllowed(ssn, dob) {
 
     let canLogIn = false; 

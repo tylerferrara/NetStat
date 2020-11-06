@@ -4,7 +4,7 @@ import { withRouter , Route, Switch, Redirect} from 'react-router-dom';
 
 import Home from "./Components/Login.js";
 import Vote from "./Components/Vote.js";
-import {isAllowed} from "./Components/Auth.js";
+import {getVotes, isAllowed} from "./Components/Auth.js";
 import ProtectedRoute from "./Components/ProtectedRoute.js"; 
 
 
@@ -48,6 +48,7 @@ class App extends React.Component {
     else return false; 
   }
 
+
   handleLogin = (e) => {
     e.preventDefault();
     this.props.history.push({
@@ -61,7 +62,7 @@ render() {
   return (
       <main>
             <Switch>
-              <Route exact path="/" render={props => (<Home {...props} authenticateUser ={this.authenticateUser} handleLogin = {this.handleLogin}/>)}></Route>
+              <Route exact path="/" render={props => (<Home {...props} authenticateUser ={this.authenticateUser} getVotes={getVotes} handleLogin = {this.handleLogin}/>)}></Route>
               <ProtectedRoute path="/vote" component={Vote} ssn = {this.state.ssn} dob = {this.state.dob} isAuth = {this.state.isAuth}/>
             </Switch>
       </main>
