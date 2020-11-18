@@ -1,0 +1,34 @@
+$TTL 36000
+myfakesite.com. IN      SOA     ns1.myfakesite.com. hostmaster.myfakesite.com. (
+               2005081201      ; serial
+               28800   ; refresh (8 hours)
+               1800    ; retry (30 mins)
+               2592000 ; expire (30 days)
+               86400 ) ; minimum (1 day)
+
+myfakesite.com.     86400   NS      ns1.myfakesite.com.
+myfakesite.com.    86400   A       127.0.0.5
+
+
+$TTL 36000
+myfakesite1.com. IN      SOA     ns1.myfakesite1.com. hostmaster.myfakesite1.com. (
+               2005081201      ; serial
+               28800   ; refresh (8 hours)
+               1800    ; retry (30 mins)
+               2592000 ; expire (30 days)
+               86400 ) ; minimum (1 day)
+
+myfakesite1.com.     86400   NS      ns1.myfakesite1.com.
+myfakesite1.com.    86400   A       127.0.1.5
+
+
+$TTL 36000
+myfakesite2.com. IN      SOA     ns1.myfakesite2.com. hostmaster.myfakesite2.com. (
+               2005081201      ; serial
+               28800   ; refresh (8 hours)
+               1800    ; retry (30 mins)
+               2592000 ; expire (30 days)
+               86400 ) ; minimum (1 day)
+
+myfakesite2.com.     86400   NS      ns1.myfakesite2.com.
+myfakesite2.com.    86400   A       127.0.2.5

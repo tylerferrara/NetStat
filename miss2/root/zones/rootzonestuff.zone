@@ -1,0 +1,32 @@
+$TTL 36000
+com. IN      SOA     ns1.com. hostmaster.com. (
+               2005081201      ; serial
+               28800   ; refresh (8 hours)
+               1800    ; retry (30 mins)
+               2592000 ; expire (30 days)
+               86400 ) ; minimum (1 day)
+
+com.     86400   NS      ns1.com.
+com.     86400   A       127.0.0.3
+
+$TTL 36000
+org. IN      SOA     ns1.org. hostmaster.org. (
+               2005081201      ; serial
+               28800   ; refresh (8 hours)
+               1800    ; retry (30 mins)
+               2592000 ; expire (30 days)
+               86400 ) ; minimum (1 day)
+
+org.     86400   NS      ns1.org.
+org.     86400   A       127.0.1.0
+
+$TTL 36000
+edu. IN      SOA     ns1.edu. hostmaster.edu. (
+               2005081201      ; serial
+               28800   ; refresh (8 hours)
+               1800    ; retry (30 mins)
+               2592000 ; expire (30 days)
+               86400 ) ; minimum (1 day)
+
+edu.     86400   NS      ns1.edu.
+edu.     86400   A       127.0.1.1
