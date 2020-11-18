@@ -9,13 +9,13 @@ import dns.zone
 from dns.exception import DNSException
 
 PORT = 54
-LOCAL_IP = '127.0.0.2'
+LOCAL_IP = '127.0.0.4'
 RESOLVER_IP = '127.0.0.1'
 
 def load_zones(name):
     domain = name
     #zone file to check for the information
-    zone_file = "zones/rootzonestuff.zone" 
+    zone_file = "zones/allmyfakesites.com.zone" 
     
     try:
         # Create a zone object from the file 
