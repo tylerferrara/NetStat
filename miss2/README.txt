@@ -1,6 +1,11 @@
 To run:
 
-#first we need to add more ips to our machine 
+#First we need the dns library from source
+git clone https://github.com/rthalley/dnspython
+cd dnspython
+python setup.py install
+
+#Then we need to add more ips to our machine 
 
 #For MacOS:
 sudo ifconfig en0 alias 127.0.0.2 up 
@@ -46,4 +51,4 @@ cd auth
 sudo python3 main.py
 
 #Now open a new terminal window and type in:
-dig myfakesite.com @127.0.0.1
+dig site.com @127.0.0.1
