@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
+	"netsec/dnsutils"
 	"os"
 	"strings"
 	"time"
@@ -10,9 +12,18 @@ import (
 	"github.com/miekg/dns"
 )
 
+// Max cache limit
+const cacheCapacity = 200
+
+// Signature
+const sigKey = "axfr."
+const sigVal = "so6ZGir4GPAqINNh9U5c3A=="
+const udpSize = 4096
+
 // Network info
 const staticIP = "127.0.0.1"
 const staticPort = 53
+const extraPort = 8661
 const rootIP = "127.0.0.2"
 const rootPort = 8020
 
@@ -44,7 +55,7 @@ func getIPFromRR(a dns.RR) (r string, e error) {
 	return "", errors.New("Malformed RR without tab delimitor when converting to string")
 }
 
-// returns the org. from domain.org.
+// returns the org. from "domain.org.""
 func getLastSubDomain(s string) (r string, e error) {
 	dotCount := 0
 	for i := len(s) - 1; i >= 0; i-- {
@@ -61,6 +72,8 @@ func getLastSubDomain(s string) (r string, e error) {
 // consult Root DNS for TLD Nameserver's IP address
 func queryRoot(r dns.Question) (ip string, e error) {
 	msg := new(dns.Msg)
+	// enable DNSSEC on message
+	// msg.SetEdns0(udpSize, true)
 	// get just the last part of the domain
 	domain, err := getLastSubDomain(r.Name)
 	if err != nil {
@@ -68,7 +81,17 @@ func queryRoot(r dns.Question) (ip string, e error) {
 	}
 	msg.SetQuestion(domain, dns.TypeA)
 	rootAddr := fmt.Sprintf("%s:%d", rootIP, rootPort)
-	in, err := dns.Exchange(msg, rootAddr)
+	// create client
+	c := new(dns.Client)
+	c.Dialer = &net.Dialer{
+		Timeout: 200 * time.Millisecond,
+		LocalAddr: &net.UDPAddr{
+			IP:   net.ParseIP(staticIP),
+			Port: extraPort,
+			Zone: "",
+		},
+	}
+	in, _, err := c.Exchange(msg, rootAddr)
 	if err != nil {
 		return "", err
 	}
@@ -136,7 +159,20 @@ func queryAuth(ip string, q dns.Question) (res *dns.Msg, err error) {
 func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	if verbose {
 		printDate()
-		fmt.Printf("Got request:\n%s", r.String())
+		fmt.Printf("Got request:\n%s\n", r.String())
+	}
+	// Look in cache
+	if res, hit := dnsutils.GetCacheVal(r); hit {
+		// cache hit
+		if verbose {
+			printDate()
+			fmt.Printf("Cache hit:\n%s\n", res.String())
+		}
+		w.WriteMsg(&res)
+		return
+	} else if verbose {
+		printDate()
+		fmt.Printf("Cache miss:\n%s\n", r.String())
 	}
 	result := new(dns.Msg)
 	result.SetReply(r)
@@ -174,6 +210,8 @@ func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 		printDate()
 		fmt.Printf("Sending valid response:\n%s", result.String())
 	}
+	// populate cache
+	dnsutils.PushCache(r, result)
 	w.WriteMsg(result)
 }
 
@@ -186,6 +224,8 @@ func main() {
 		fmt.Printf("IP: %s\tPORT: %d\n", staticIP, staticPort)
 		fmt.Println("Listening...")
 	}
+	// init cache
+	dnsutils.InitCache(cacheCapacity)
 	// Define server configurations
 	addr := fmt.Sprintf("%s:%d", staticIP, staticPort)
 	server := &dns.Server{Addr: addr, Net: "udp"}
