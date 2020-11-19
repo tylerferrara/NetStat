@@ -1,7 +1,9 @@
 package dnsutils
 
 import (
+	"fmt"
 	"io/ioutil"
+	"reflect"
 	"strings"
 
 	"github.com/bwesterb/go-zonefile"
@@ -10,6 +12,10 @@ import (
 
 // Holds zone information after call to loadZones
 var zoneData *zonefile.Zonefile
+
+// Cache datastructure
+var cacheData map[string]dns.Msg
+var cacheKeys []string // first in last out (OLDEST in front)
 
 // classToInt converts class string to it's number complement
 func classToInt(c string) uint16 {
@@ -87,6 +93,93 @@ func typeToInt(t string) uint16 {
 		return 16
 	}
 	return 0
+}
+
+// zeroMsgID standardizes the ID so cache can find them later
+func zeroMsgID(msg *dns.Msg) {
+	msg.Id = 0
+}
+
+// GetCacheVal returns a msg found and true if cache hit
+func GetCacheVal(key *dns.Msg) (val dns.Msg, hit bool) {
+	// remove key ID
+	id := key.Id
+	zeroMsgID(key)
+	// store key as string
+	byteKey, err := key.Pack()
+	if err != nil {
+		fmt.Println("[WARNING] msg can't be packed into string format!")
+	}
+	strKey := string(byteKey)
+	val, hit = cacheData[strKey]
+	if hit {
+		// re-order keys
+		reord := false
+		for idx, k := range cacheKeys {
+			if reflect.DeepEqual(k, strKey) {
+				reord = true
+				if idx == 0 {
+					// beginning
+					cacheKeys = append(make([]string, 0, cap(cacheKeys)), cacheKeys[1:]...)
+					cacheKeys = append(cacheKeys, strKey)
+				} else if idx < len(cacheKeys)-1 {
+					// middle
+					left := cacheKeys[:idx]
+					right := cacheKeys[idx+1:]
+					cacheKeys = append(make([]string, 0, cap(cacheKeys)), left...)
+					cacheKeys = append(cacheKeys, right...)
+					cacheKeys = append(cacheKeys, strKey)
+				}
+			}
+		}
+		if !reord {
+			fmt.Println("\n[WARNING] Cache re-ording was not accomplished!\nCheck equality")
+		}
+	} else {
+		fmt.Println("KEYs don't match")
+		fmt.Println("Given:")
+		fmt.Println(strKey)
+		if len(cacheKeys) > 0 {
+			fmt.Println("Stored Tail:")
+			fmt.Println(cacheKeys[len(cacheKeys)-1])
+
+		}
+		fmt.Println("map:")
+	}
+	// re-add key ID
+	key.Id = id
+	return val, hit
+}
+
+// PushCache adds a message to the cache
+func PushCache(key *dns.Msg, val *dns.Msg) {
+	max := cap(cacheKeys)
+	// remove ID
+	zeroMsgID(key)
+	// store key as string
+	byteKey, err := key.Pack()
+	if err != nil {
+		fmt.Println("[WARNING] msg can't be packed into string format!")
+	}
+	strKey := string(byteKey)
+	// check length
+	if len(cacheKeys) == max {
+		// remove first
+		last := cacheKeys[0]
+		// adjust keys
+		cacheKeys = append(make([]string, 0, max), cacheKeys[1:]...)
+		// remove key from map
+		delete(cacheData, last)
+	}
+	cacheKeys = append(cacheKeys, strKey)
+	cacheData[strKey] = *val
+}
+
+// InitCache creates a map of given size
+func InitCache(max int) {
+	cacheData = make(map[string]dns.Msg)
+	// length: 0, capacity: max
+	cacheKeys = make([]string, 0, max)
 }
 
 // GetResolutionList returns the last portion of the entry record
