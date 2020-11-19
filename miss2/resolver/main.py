@@ -100,15 +100,15 @@ def recursor():
         # get data from client
         msg = dns.message.from_wire(data)
         # talk to dot
-        resp1 = resolveDot(msg)
+        resp3 = resolveDot(msg)
         #TODO: take the response from dot, extract the IP, and fix the TLD IP address 
 
-        # talk to TLD
-        resp2 = resolveTLD(msg)
-        #TODO: take the response from dot, extract the IP, and fix the Auth IP address 
+        # # talk to TLD
+        # resp2 = resolveTLD(msg)
+        # #TODO: take the response from dot, extract the IP, and fix the Auth IP address 
 
-        # talk to Auth
-        resp3 = resolveAuth(msg)
+        # # talk to Auth
+        # resp3 = resolveAuth(msg)
 
         # pass back to client
         sock.sendto(resp3.to_wire(), addr)
