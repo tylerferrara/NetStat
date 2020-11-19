@@ -1,3 +1,5 @@
+github.com/bwesterb/go-zonefile v1.0.0 h1:ZSlRYCdfjYK9aeb/3RaFDe1QUmcoY4ntYb4DdAfYFU4=
+github.com/bwesterb/go-zonefile v1.0.0/go.mod h1:9IS4q4dptNSWk4Q6H+j9VG3D0el9jYujF+ruySi1DrI=
 github.com/miekg/dns v1.1.35 h1:oTfOaDH+mZkdcgdIjH6yBajRGtIwcwcaR+rt23ZSrJs=
 github.com/miekg/dns v1.1.35/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
