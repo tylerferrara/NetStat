@@ -18,8 +18,8 @@ fakesite1.com. IN      SOA     ns1.fakesite1.com. hostmaster.fakesite1.com. (
                2592000 ; expire (30 days)
                86400 ) ; minimum (1 day)
 
-fakesite1.com.     86400   NS      ns1.fakesite1.com.
-fakesite1.com.    86400   A       127.0.1.5
+fakesite1.com.     IN   NS      ns1.fakesite1.com.
+fakesite1.com.    IN   A       127.0.1.5
 
 
 $TTL 36000
@@ -30,5 +30,5 @@ fakesite2.com. IN      SOA     ns1.fakesite2.com. hostmaster.fakesite2.com. (
                2592000 ; expire (30 days)
                86400 ) ; minimum (1 day)
 
-fakesite2.com.     86400   NS      ns1.fakesite2.com.
-fakesite2.com.    86400   A       127.0.2.5
+fakesite2.com.     IN   NS      ns1.fakesite2.com.
+fakesite2.com.    IN   A       127.0.2.5

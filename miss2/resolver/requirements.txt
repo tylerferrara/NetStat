@@ -1,2 +1,0 @@
-dnspython==2.0.0
-websocket-client==0.57.0

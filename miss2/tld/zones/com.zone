@@ -1,4 +1,11 @@
 $TTL 36000
+fakesite1.com. IN      SOA     ns1.fakesite.com. hostmaster.fakesite.com. (
+               2005081201      ; serial
+               28800   ; refresh (8 hours)
+               1800    ; retry (30 mins)
+               2592000 ; expire (30 days)
+               86400 ) ; minimum (1 day)
+
 fakesite.com. IN      SOA     ns1.fakesite.com. hostmaster.fakesite.com. (
                2005081201      ; serial
                28800   ; refresh (8 hours)
