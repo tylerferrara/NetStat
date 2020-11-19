@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/miekg/dns"
 )
@@ -17,12 +18,19 @@ const rootPort = 8020
 
 var verbose bool
 
+func printDate() {
+	fmt.Printf("--------- %s ---------\n", time.Now().Format("2006-01-02 15:04:05.000000"))
+}
+
 // expects to run on SOA records
 func getNsFromRR(a dns.RR) (r string, e error) {
 	s := a.String()
+	s = strings.ReplaceAll(s, "\t", " ")
 	lst := strings.Split(s, " ")
-	fmt.Println(lst)
-	return "", nil
+	if len(lst) > 4 {
+		return lst[4], nil
+	}
+	return "", errors.New("Malformed dns.RR expecting (expecting SOA record when calling getNsFromRR)")
 }
 
 // expects to run on A records
@@ -50,83 +58,122 @@ func getLastSubDomain(s string) (r string, e error) {
 	return "", errors.New("Malformed domain, containing less than two periods")
 }
 
-func queryRoot(r dns.Question) (m *dns.Msg, e error) {
+// consult Root DNS for TLD Nameserver's IP address
+func queryRoot(r dns.Question) (ip string, e error) {
 	msg := new(dns.Msg)
 	// get just the last part of the domain
 	domain, err := getLastSubDomain(r.Name)
 	if err != nil {
-		return msg, err
+		return "", err
 	}
 	msg.SetQuestion(domain, dns.TypeA)
 	rootAddr := fmt.Sprintf("%s:%d", rootIP, rootPort)
 	in, err := dns.Exchange(msg, rootAddr)
 	if err != nil {
-		return msg, err
+		return "", err
 	}
-	return in, nil
+	if len(in.Answer) == 0 {
+		return "", errors.New("Answer from Root DNS server has no answer")
+	}
+	// obtain TLD Nameserver address
+	tldIP, err := getIPFromRR(in.Answer[0])
+	if err != nil {
+		return "", err
+	}
+	return tldIP, nil
 }
 
-func queryTLD(ip string, q dns.Question) (m *dns.Msg, e error) {
+// consult TLD Nameserver for Authoritative DNS IP
+func queryTLD(ip string, q dns.Question) (authIP string, e error) {
 	// ****************************************
 	// ***********************************************
 	// NOTE: ***********************************************
 	// When we deploy this, the default port will be 53
 	port := 8083
 	msg := new(dns.Msg)
-	rootAddr := fmt.Sprintf("%s:%d", ip, port)
+	tldAddr := fmt.Sprintf("%s:%d", ip, port)
 	// fetch domain with SOA
 	msg.SetQuestion(q.Name, dns.TypeSOA)
-	in, err := dns.Exchange(msg, rootAddr)
+	in, err := dns.Exchange(msg, tldAddr)
 	if err != nil {
-		return msg, err
+		return "", err
 	}
 	if len(in.Answer) == 0 {
-		return in, errors.New("TLD Nameserver gave empty answer to SOA request")
+		return "", errors.New("TLD Nameserver gave empty answer to SOA request")
 	}
 	// obtain IP of AUTH server
-	fmt.Println(in.Answer[0])
 	ns, err := getNsFromRR(in.Answer[0])
 	if err != nil {
-		return msg, err
+		return "", err
 	}
-	fmt.Println(ns)
-	return nil, nil
+	msg = new(dns.Msg)
+	msg.SetQuestion(ns, dns.TypeA)
+	ina, err := dns.Exchange(msg, tldAddr)
+	if err != nil {
+		return "", nil
+	}
+	if len(ina.Answer) == 0 {
+		return "", errors.New("TLD Nameserver gave empty answer to A request")
+	}
+	authIP, err = getIPFromRR(ina.Answer[0])
+	return authIP, err
 }
 
-func queryAuth(r *dns.Msg) *dns.Msg {
-	// result := new(dns.Msg)
-	return r
+// cunsult Authouritative DNS to get the requested record
+func queryAuth(ip string, q dns.Question) (res *dns.Msg, err error) {
+	// ****************************************
+	// ***********************************************
+	// NOTE: ***********************************************
+	// When we deploy this, the default port will be 53
+	msg := new(dns.Msg)
+	port := 8082
+	authAddr := fmt.Sprintf("%s:%d", ip, port)
+	msg.SetQuestion(q.Name, q.Qtype)
+	res, err = dns.Exchange(msg, authAddr)
+	return res, err
 }
 
 func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
+	if verbose {
+		printDate()
+		fmt.Printf("Got request:\n%s", r.String())
+	}
 	result := new(dns.Msg)
 	result.SetReply(r)
 	if len(r.Question) != 1 {
+		printDate()
 		fmt.Printf("Incoming request doesn't have a single question!\nReturning an empty reply")
 		w.WriteMsg(result)
+		return
 	}
 	// ROOT
-	ans, err := queryRoot(r.Question[0])
+	tldIP, err := queryRoot(r.Question[0])
 	if err != nil {
-		fmt.Printf("Can't reach Root DNS server\n%s\n", err.Error())
+		printDate()
+		fmt.Printf("Stopped at Root DNS server\n%s\n", err.Error())
 		w.WriteMsg(result)
-	}
-	if len(ans.Answer) == 0 {
-		fmt.Printf("Answer from Root DNS server has no answer")
-		w.WriteMsg(result)
-	}
-	tldIP, err := getIPFromRR(ans.Answer[0])
-	if err != nil {
-		fmt.Printf("Unable to get IP for TLD server in record\n%s\n", err.Error())
+		return
 	}
 	// TLD
-	ans, err = queryTLD(tldIP, r.Question[0])
+	authIP, err := queryTLD(tldIP, r.Question[0])
 	if err != nil {
-		fmt.Printf("Can't reach TLD Nameserver\n%s\n", err.Error())
+		printDate()
+		fmt.Printf("Stopped at TLD Nameserver\n%s\n", err.Error())
 		w.WriteMsg(result)
+		return
 	}
-	// // AUTH
-	// result = queryAuth(r)
+	// AUTH
+	result, err = queryAuth(authIP, r.Question[0])
+	if err != nil {
+		printDate()
+		fmt.Printf("Stopped at Authoritative DNS\n%s\n", err.Error())
+		w.WriteMsg(result)
+		return
+	}
+	if verbose {
+		printDate()
+		fmt.Printf("Sending valid response:\n%s", result.String())
+	}
 	w.WriteMsg(result)
 }
 
