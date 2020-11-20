@@ -12,8 +12,8 @@ import (
 )
 
 // Network info
-const staticIP = "10.21.4.4" //"127.0.0.4"
-const staticPort = 53
+const staticIP = "127.0.0.4" // "10.21.4.4"
+const staticPort = 8084      // 53
 
 // Flag
 var verbose bool
