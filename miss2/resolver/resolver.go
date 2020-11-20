@@ -21,6 +21,8 @@ const sigVal = "92kslfjwlOWPk0s=99="
 // DNSSEC
 var tsigMap = map[string]string{
 	"rootkey.": "BB6zGir4GPAqINNh9U5c3A==", // known root key
+	"tldkey.":  "cB6zGir4GPAqINNh9U5c3A==",
+	"authkey.": "tt6zGir4GPAqINNh9U5c3A==",
 	sigKey:     sigVal,
 }
 
@@ -142,9 +144,37 @@ func queryTLD(ip string, q dns.Question) (authIP string, e error) {
 	tldAddr := fmt.Sprintf("%s:%d", ip, port)
 	// fetch domain with SOA
 	msg.SetQuestion(q.Name, dns.TypeSOA)
-	in, err := dns.Exchange(msg, tldAddr)
+	// create client
+	c := new(dns.Client)
+	c.Dialer = &net.Dialer{
+		Timeout: 200 * time.Millisecond,
+		LocalAddr: &net.UDPAddr{
+			IP:   net.ParseIP(staticIP),
+			Port: extraPort,
+			Zone: "",
+		},
+	}
+	if dnssec {
+		msg.SetEdns0(udpSize, true)
+		c.TsigSecret = tsigMap
+		msg.SetTsig("tldkey.", dns.HmacSHA512, 3000, time.Now().Unix())
+	}
+	in, _, err := c.Exchange(msg, tldAddr)
 	if err != nil {
 		return "", err
+	}
+	if dnssec {
+		if in.IsTsig() == nil {
+			if verbose {
+				printDate()
+				fmt.Println("=== NO TSIG FROM TLD")
+			}
+			return "", errors.New("TLD responded without TSIG when DNSSEC is enabled")
+		}
+		if verbose {
+			printDate()
+			fmt.Println("=== VALID TSIG RESPONSE FROM TLD")
+		}
 	}
 	if len(in.Answer) == 0 {
 		return "", errors.New("TLD Nameserver gave empty answer to SOA request")
@@ -156,9 +186,27 @@ func queryTLD(ip string, q dns.Question) (authIP string, e error) {
 	}
 	msg = new(dns.Msg)
 	msg.SetQuestion(ns, dns.TypeA)
-	ina, err := dns.Exchange(msg, tldAddr)
+	if dnssec {
+		msg.SetEdns0(udpSize, true)
+		c.TsigSecret = tsigMap
+		msg.SetTsig("tldkey.", dns.HmacSHA512, 3000, time.Now().Unix())
+	}
+	ina, _, err := c.Exchange(msg, tldAddr)
 	if err != nil {
 		return "", nil
+	}
+	if dnssec {
+		if ina.IsTsig() == nil {
+			if verbose {
+				printDate()
+				fmt.Println("=== NO TSIG FROM TLD")
+			}
+			return "", errors.New("TLD responded without TSIG when DNSSEC is enabled")
+		}
+		if verbose {
+			printDate()
+			fmt.Println("=== VALID TSIG RESPONSE FROM TLD")
+		}
 	}
 	if len(ina.Answer) == 0 {
 		return "", errors.New("TLD Nameserver gave empty answer to A request")
@@ -177,7 +225,35 @@ func queryAuth(ip string, q dns.Question) (res *dns.Msg, err error) {
 	port := 8084
 	authAddr := fmt.Sprintf("%s:%d", ip, port)
 	msg.SetQuestion(q.Name, q.Qtype)
-	res, err = dns.Exchange(msg, authAddr)
+	// create client
+	c := new(dns.Client)
+	c.Dialer = &net.Dialer{
+		Timeout: 200 * time.Millisecond,
+		LocalAddr: &net.UDPAddr{
+			IP:   net.ParseIP(staticIP),
+			Port: extraPort,
+			Zone: "",
+		},
+	}
+	if dnssec {
+		msg.SetEdns0(udpSize, true)
+		c.TsigSecret = tsigMap
+		msg.SetTsig("authkey.", dns.HmacSHA512, 3000, time.Now().Unix())
+	}
+	res, _, err = c.Exchange(msg, authAddr)
+	if dnssec {
+		if res.IsTsig() == nil {
+			if verbose {
+				printDate()
+				fmt.Println("=== NO TSIG FROM AUTH")
+			}
+			return res, errors.New("TLD responded without TSIG when DNSSEC is enabled")
+		}
+		if verbose {
+			printDate()
+			fmt.Println("=== VALID TSIG RESPONSE FROM TLD")
+		}
+	}
 	return res, err
 }
 
