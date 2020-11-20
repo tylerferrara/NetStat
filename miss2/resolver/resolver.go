@@ -2,10 +2,10 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"net"
 	"netsec/dnsutils"
-	"os"
 	"strings"
 	"time"
 
@@ -15,9 +15,16 @@ import (
 // Max cache limit
 const cacheCapacity = 200
 
-// Signature
-const sigKey = "axfr."
-const sigVal = "so6ZGir4GPAqINNh9U5c3A=="
+const sigKey = "reskey."
+const sigVal = "92kslfjwlOWPk0s=99="
+
+// DNSSEC
+var tsigMap = map[string]string{
+	"rootkey.": "BB6zGir4GPAqINNh9U5c3A==", // known root key
+	sigKey:     sigVal,
+}
+
+// UDP Packet Size
 const udpSize = 4096
 
 // Network info
@@ -27,7 +34,9 @@ const extraPort = 8071
 const rootIP = "127.0.0.2" // "10.21.4.2"
 const rootPort = 8082      // 53
 
+// Flags
 var verbose bool
+var dnssec bool
 
 func printDate() {
 	fmt.Printf("--------- %s ---------\n", time.Now().Format("2006-01-02 15:04:05.000000"))
@@ -72,8 +81,6 @@ func getLastSubDomain(s string) (r string, e error) {
 // consult Root DNS for TLD Nameserver's IP address
 func queryRoot(r dns.Question) (ip string, e error) {
 	msg := new(dns.Msg)
-	// enable DNSSEC on message
-	// msg.SetEdns0(udpSize, true)
 	// get just the last part of the domain
 	domain, err := getLastSubDomain(r.Name)
 	if err != nil {
@@ -91,9 +98,27 @@ func queryRoot(r dns.Question) (ip string, e error) {
 			Zone: "",
 		},
 	}
+	if dnssec {
+		msg.SetEdns0(udpSize, true)
+		c.TsigSecret = tsigMap
+		msg.SetTsig("rootkey.", dns.HmacSHA512, 3000, time.Now().Unix())
+	}
 	in, _, err := c.Exchange(msg, rootAddr)
 	if err != nil {
 		return "", err
+	}
+	if dnssec {
+		if in.IsTsig() == nil {
+			if verbose {
+				printDate()
+				fmt.Println("=== NO TSIG FROM ROOT")
+			}
+			return "", errors.New("Root responded without TSIG when DNSSEC is enabled")
+		}
+		if verbose {
+			printDate()
+			fmt.Println("=== VALID TSIG RESPONSE FROM ROOT")
+		}
 	}
 	if len(in.Answer) == 0 {
 		return "", errors.New("Answer from Root DNS server has no answer")
@@ -215,13 +240,21 @@ func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	w.WriteMsg(result)
 }
 
+// handle flags
+func parseFlags() {
+	flag.BoolVar(&verbose, "v", false, "verbose debug output")
+	flag.BoolVar(&dnssec, "s", false, "enable dnssec")
+	flag.Parse()
+}
+
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "-v" {
-		verbose = true
-	}
+	parseFlags()
 	if verbose {
 		fmt.Println("Starting RESOLVER DNS")
 		fmt.Printf("IP: %s\tPORT: %d\n", staticIP, staticPort)
+		if dnssec {
+			fmt.Println("=== DNSSEC ENABLED ===")
+		}
 		fmt.Println("Listening...")
 	}
 	// init cache
@@ -229,6 +262,9 @@ func main() {
 	// Define server configurations
 	addr := fmt.Sprintf("%s:%d", staticIP, staticPort)
 	server := &dns.Server{Addr: addr, Net: "udp"}
+	if dnssec {
+		server.TsigSecret = tsigMap
+	}
 	// Bind handler
 	dns.HandleFunc(".", handleRequest)
 	// Listen
