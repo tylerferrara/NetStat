@@ -30,11 +30,11 @@ var tsigMap = map[string]string{
 const udpSize = 4096
 
 // Network info
-const staticIP = "10.21.4.1" // "127.0.0.1"
+const staticIP = "127.0.0.1" // "10.21.4.1"
 const staticPort = 53
 const extraPort = 8071
-const rootIP = "10.21.4.2" // "127.0.0.2"
-const rootPort = 53        // 8082
+const rootIP = "127.0.0.2" // "10.21.4.2"
+const rootPort = 8082      // 53
 
 // Flags
 var verbose bool
@@ -139,7 +139,7 @@ func queryTLD(ip string, q dns.Question) (authIP string, e error) {
 	// ***********************************************
 	// NOTE: ***********************************************
 	// When we deploy this, the default port will be 53
-	port := 53 // 8083
+	port := 8083 // 53
 	msg := new(dns.Msg)
 	tldAddr := fmt.Sprintf("%s:%d", ip, port)
 	// fetch domain with SOA
@@ -222,7 +222,7 @@ func queryAuth(id uint16, ip string, q dns.Question) (res *dns.Msg, err error) {
 	// NOTE: ***********************************************
 	// When we deploy this, the default port will be 53
 	msg := new(dns.Msg)
-	port := 53 // 8084
+	port := 8084 // 53
 	authAddr := fmt.Sprintf("%s:%d", ip, port)
 	msg.SetQuestion(q.Name, q.Qtype)
 	msg.Id = id

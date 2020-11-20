@@ -7,4 +7,4 @@ com. IN      SOA     ns1.com. hostmaster.com. (
                86400 ) ; minimum (1 day)
 
 com.     IN   NS      ns1.com.
-com.     IN   A       10.21.4.3
+com.     IN   A       127.0.0.3

@@ -13,8 +13,8 @@ import (
 )
 
 // Network info
-const staticIP = "10.21.4.2" // "127.0.0.2"
-const staticPort = 53        // 8082
+const staticIP = "127.0.0.2" //"10.21.4.2"
+const staticPort = 8082      //53
 
 // DNSSEC
 const sigKey = "rootkey."
