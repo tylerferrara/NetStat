@@ -135,16 +135,6 @@ func GetCacheVal(key *dns.Msg) (val dns.Msg, hit bool) {
 		if !reord {
 			fmt.Println("\n[WARNING] Cache re-ording was not accomplished!\nCheck equality")
 		}
-	} else {
-		fmt.Println("KEYs don't match")
-		fmt.Println("Given:")
-		fmt.Println(strKey)
-		if len(cacheKeys) > 0 {
-			fmt.Println("Stored Tail:")
-			fmt.Println(cacheKeys[len(cacheKeys)-1])
-
-		}
-		fmt.Println("map:")
 	}
 	// re-add key ID
 	key.Id = id
