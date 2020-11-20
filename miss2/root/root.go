@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"netsec/dnsutils"
@@ -15,8 +16,20 @@ import (
 const staticIP = "127.0.0.2" // "10.21.4.2"
 const staticPort = 8082      // 53
 
-// Flag
+// DNSSEC
+const sigKey = "rootkey."
+const sigVal = "BB6zGir4GPAqINNh9U5c3A=="
+
+var tsigMap = map[string]string{
+	sigKey: sigVal,
+}
+
+// UDP Packet Size
+const udpSize = 4096
+
+// Flags
 var verbose bool
+var dnssec bool
 
 // Zone location
 const zoneFile = "zones/root.zone"
@@ -112,6 +125,32 @@ func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	}
 	// handle question
 	answerQuestion(r.Question[0], result)
+	if dnssec {
+		if r.IsTsig() != nil {
+			if verbose {
+				printDate()
+				fmt.Println("=== Message recieved is TSIG enabled")
+			}
+			if w.TsigStatus() == nil {
+				// *Msg r has an TSIG record and it was validated
+				if verbose {
+					fmt.Println("=== Valid TSIG found")
+				}
+				// result.SetEdns0(udpSize, true)
+				result.SetTsig(sigKey, dns.HmacSHA512, 3000, time.Now().Unix())
+			} else {
+				// *Msg r has an TSIG records and it was not validated
+				if verbose {
+					fmt.Println("=== [WARNING] Invalid TSIG found when response enabled DNSSEC")
+				}
+			}
+		} else {
+			if verbose {
+				printDate()
+				fmt.Println("=== Message recieved has no TSIG")
+			}
+		}
+	}
 	// send back response
 	if verbose {
 		printDate()
@@ -120,23 +159,34 @@ func handleRequest(w dns.ResponseWriter, r *dns.Msg) {
 	w.WriteMsg(result)
 }
 
+// handle flags
+func parseFlags() {
+	flag.BoolVar(&verbose, "v", false, "verbose debug output")
+	flag.BoolVar(&dnssec, "s", false, "enable dnssec")
+	flag.Parse()
+}
+
 func main() {
+	parseFlags()
 	if err := dnsutils.LoadZones(zoneFile); err != nil {
 		printDate()
 		fmt.Printf("Failed to load zonefile! ERROR: %s\n", err.Error())
 		os.Exit(1)
 	}
-	if len(os.Args) > 1 && os.Args[1] == "-v" {
-		verbose = true
-	}
 	if verbose {
 		fmt.Println("Starting AUTH DNS")
 		fmt.Printf("IP: %s\tPORT: %d\n", staticIP, staticPort)
+		if dnssec {
+			fmt.Println("=== DNSSEC ENABLED ===")
+		}
 		fmt.Println("Listening...")
 	}
 	// Define server configurations
 	addr := fmt.Sprintf("%s:%d", staticIP, staticPort)
 	udpServer := &dns.Server{Addr: addr, Net: "udp"}
+	if dnssec {
+		udpServer.TsigSecret = tsigMap
+	}
 	dns.HandleFunc(".", handleRequest)
 	//  Run UDP server
 	if err := udpServer.ListenAndServe(); err != nil {
