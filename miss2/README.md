@@ -40,10 +40,10 @@ dig fakesite.com @172.0.0.1 SOA
 
 #### VM Notes:
 All ports are set to default DNS 53
-VM      IP          SERVICE
-------------------------------
-1       10.21.4.1   recursor
-2       10.21.4.2   root
-3       10.21.4.3   tld
-4       10.21.4.4   auth
+| VM | IP        | PORT | SERVICE  |
+|----|-----------|------|----------|
+| 1  | 10.21.4.1 | 53   | resolver |
+| 2  | 10.21.4.2 | 53   | root     |
+| 3  | 10.21.4.3 | 53   | tld      |
+| 4  | 10.21.4.4 | 53   | auth     |
 

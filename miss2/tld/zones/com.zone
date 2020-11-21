@@ -15,5 +15,5 @@ fakesite.com. IN      SOA     ns1.fakesite.com. hostmaster.fakesite.com. (
 
 fakesite.com.     IN   NS      ns1.fakesite.com.
 
-ns1.fakesite.com.    IN   A       127.0.0.4
+ns1.fakesite.com.    IN   A       10.21.4.4
 

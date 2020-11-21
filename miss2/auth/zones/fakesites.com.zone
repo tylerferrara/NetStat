@@ -7,7 +7,7 @@ fakesite.com. IN      SOA     ns1.fakesite.com. hostmaster.fakesite.com. (
                86400 ) ; minimum (1 day)
 
 fakesite.com.    IN   NS      ns1.fakesite.com.
-fakesite.com.    IN   A       127.0.0.5
+fakesite.com.    IN   A       10.21.4.5
 
 
 $TTL 36000
@@ -19,7 +19,7 @@ fakesite1.com. IN      SOA     ns1.fakesite1.com. hostmaster.fakesite1.com. (
                86400 ) ; minimum (1 day)
 
 fakesite1.com.     IN   NS      ns1.fakesite1.com.
-fakesite1.com.    IN   A       127.0.1.5
+fakesite1.com.    IN   A       10.21.4.6
 
 
 $TTL 36000
@@ -31,4 +31,4 @@ fakesite2.com. IN      SOA     ns1.fakesite2.com. hostmaster.fakesite2.com. (
                86400 ) ; minimum (1 day)
 
 fakesite2.com.     IN   NS      ns1.fakesite2.com.
-fakesite2.com.    IN   A       127.0.2.5
+fakesite2.com.    IN   A       10.21.4.7
