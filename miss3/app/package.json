@@ -1,0 +1,23 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "Dummy App made to rely on the provider in authenticating users.",
+  "main": "index.js",
+  "scripts": {
+    "build": "pkg index.js",
+    "dev": "nodemon index.js",
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tyler Ferrara",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "openid": "^2.0.7",
+    "passport": "^0.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.6",
+    "pkg": "^4.4.9"
+  }
+}
