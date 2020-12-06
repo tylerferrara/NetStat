@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="shortcut icon" type="image/ico" href="favicon.ico"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy & Sell Guitars</title>
+    <style>
+        body {
+            margin: 0;
+        }
+        .banner {
+            background-color: blue;
+            overflow: hidden;
+            padding-left: 1rem;
+            color: whitesmoke;
+            display: flex;
+        }
+        .banner > img {
+            /* display: inline; */
+            width: 80px;
+            height: 80px;
+            margin-right: 1rem;
+            /* margin-left: 30rem; */
+        }
+        .buy {
+            margin-top: 1rem;
+            display: flex;
+        }
+        .buy > div {
+            margin-left: 1rem;
+        }
+        .guitar {
+            height: 30rem;
+        }
+        .info {
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <a id="connect" href="https://localhost:8081/authenticating"><button>Connect with Provider</button></a>
+
+    <!-- <div class="banner">
+        <img src="guitar_gif.gif" alt="guitar shapeshifting">
+        <h1>Buy & Sell Guitars!</h1>
+    </div>
+    <div class="buy">
+        <div>
+            <img class="guitar" src="les_paul.png" alt="Les Paul">
+            <div class="info">
+                <h3>Les Paul</h3>
+                <a class="contact" href="{}"><button class="buy-btn">message dealer</button></a>
+            </div>
+        </div>
+        <div>
+            <img class="guitar" src="fender_strat.png" alt="Fender Stratocaster">
+            <div class="info">
+                <h3>Fender Strat</h3>
+                <a class="contact" href="{}"><button class="buy-btn">message dealer</button></a>
+            </div>
+        </div>
+        <div>
+            <img class="guitar" src="gibson_sg.png" alt="Gibson SG">
+            <div class="info">
+                <h3>Gibson SG</h3>
+                <a class="contact" href="{}"><button class="buy-btn">message dealer</button></a>
+            </div>
+        </div>
+    </div>
+    <script>
+        anchors = document.getElementsByClassName("contact")
+        for (let i = 0; i < anchors.length; i++) {
+            let a = anchors[i];
+            a.setAttribute("href", window.location.href + "message")
+        }
+    </script> -->
+</body>
+</html>

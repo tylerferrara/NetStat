@@ -5,16 +5,22 @@
   "main": "index.js",
   "scripts": {
     "build": "pkg index.js",
-    "dev": "nodemon index.js",
-    "start": "node index.js",
+    "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Tyler Ferrara",
   "license": "ISC",
   "dependencies": {
+    "crypto-js": "^4.0.0",
+    "ejs": "^3.1.5",
     "express": "^4.17.1",
+    "fs": "0.0.1-security",
+    "https": "^1.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "node-fetch": "^2.6.1",
     "openid": "^2.0.7",
-    "passport": "^0.4.1"
+    "passport": "^0.4.1",
+    "ssl-root-cas": "^1.3.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.6",

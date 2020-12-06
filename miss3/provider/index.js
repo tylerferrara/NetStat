@@ -1,37 +1,82 @@
 const express = require('express');
-const { get } = require('https');
-const app = express()
+const jwt = require('jsonwebtoken');
+const crypto = require("crypto-js");
+const app = express();
+const fs = require('fs');
+const https = require('https');
 const path = require('path'); 
-const port = 3000
+const privateKey  = fs.readFileSync(path.join(__dirname, 'certs/server.key'), 'utf8');
+const certificate = fs.readFileSync(path.join(__dirname, 'certs/server.cert'), 'utf8');
+const credentials = {key: privateKey, cert: certificate};
 
-app.use(express.static('resources'))
+const DEV_ENV = true;
+
+// NOTE: TLS is only used here to encrypt traffic.
+// official certs cannot be verified. Therefore, this 
+// demo will trust all certs as long as they are provided.
+// So cert attacks will not be allowed.
+process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+
+let port = 3000;
+let providerURI;
+let appURI;
+
+if (DEV_ENV) {
+    port = 3000;
+    providerURI = "https://localhost";
+    appURI = "https://localhost";
+}
+
+
+
+
+app.use(express.static('views'))
+app.use(express.json());
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 
 const AUTHCODE_EXPIRATION = 5; // in minutes
+const PROVIDER_SECRET = "aff92fnasflfk2fnv02hgms";
 
 const staticRelyingParty = {
     id: "3913614092307123",
+    secret: "mysupersecretkey",
     name: "Buy & Sell Guitars",
-    domain: "http://localhost:3000/",
+    domain: `${appURI}:${DEV_ENV ? 80 : 8081}/`,
+    sub: null,
 }
 
 const relyingParties = {
     "3913614092307123": staticRelyingParty
 }
 
-const staticUser = {
-    id: "4814028462",
-    email: "bob@gmail.com",
-    username: "a",
-    password: "b",
-    authCode: {
-        code: "",
-        timeSinceCreated: null,
-    },
-    permissions: [],
-}
+const keyCodes = [];
 
 const users = {
-    "4814028462": staticUser
+    "4814028462": {
+        id: "4814028462",
+        email: "kentclark@gmail.com",
+        username: "superman",
+        password: "U2FsdGVkX18Fs8iI/GYToZbkIX21ZtLwdlB88JmNpLw=", // hash of iFlyhigh
+        authCode: {
+            code: "",
+            created: null,
+            min_expires: AUTHCODE_EXPIRATION,
+        },
+        permissions: [],
+    },
+    "2720247213": {
+        id: "2720247213",
+        email: "handymany@gmail.com",
+        username: "many",
+        password: "U2FsdGVkX18mNThv4dQ+3/abtmNyaCMc34nCowWmkn4=", // hash of ifixit
+        authCode: {
+            code: "",
+            created: null,
+            min_expires: AUTHCODE_EXPIRATION,
+        },
+        permissions: [],
+    }
 }
 
 function getUserbyID(id) {
@@ -43,16 +88,13 @@ function getReylingPartybyID(id) {
 }
 
 // auth codes are valid for 5min after issue
-function validAuthCode(id, code) {
-    // check user exists
-    const user = getUserbyID(id);
-    if (user === null) {
+function validAuthCode(authCode) {
+    if (authCode === null) {
         return false
     }
     // check authcode was created
-    const created = user.authCode.timeSinceCreated;
-    const min = Math.abs(Math.round((((Date.now() - created) % 86400000) % 3600000) / 60000));
-    return min < AUTHCODE_EXPIRATION;
+    const min = Math.abs(Math.round((((Date.now() - authCode.created) % 86400000) % 3600000) / 60000));
+    return min < authCode.min_expires;
 }
 
 function randStr(length) {
@@ -66,10 +108,12 @@ function randStr(length) {
 }
 
 function getUser(username, password) {
+    const passkey = "-2mcbal3ubi2oacs,2ioghe,a;;caij"
     const keys = Object.keys(users);
     for (let i = 0; i < keys.length; i++) {
         const user = users[keys[i]];
-        if (user.password == password && user.username == username) {
+        const p = crypto.AES.decrypt(user.password, passkey).toString(crypto.enc.Utf8)
+        if (p == password && user.username == username) {
             return user;
         }
     }
@@ -90,7 +134,7 @@ app.get('/authenticate', (req, res) => {
             client_id: req.query.client_id,
             redirect_uri: req.query.redirect_uri,
         }
-    } catch (error) {
+    } catch(error) {
         res.send("Invalid format")
     }
     if (!authRequest.scope.includes("openid")) {
@@ -100,8 +144,7 @@ app.get('/authenticate', (req, res) => {
     if (!checkAuthRequest(authRequest)) {
         res.send("Invalid format: ")
     }
-
-    res.sendFile(path.join(__dirname, 'resources', 'login.html'))
+    res.render('login');
 });
 
 app.post('/authenticate', (req, res) => {
@@ -121,11 +164,14 @@ app.post('/authenticate', (req, res) => {
         res.json({success: false, reason: "Malformed request"})
         return
     }
+    if (username == undefined || password == undefined) {
+        res.json({success: false, reason: "Credentials not found"})
+    }
     // check user's credentials
     const user = getUser(username, password);
     if (user != null) {
         // generate auth code
-        user.authCode.timeSinceCreated = Date.now();
+        user.authCode.created = Date.now();
         user.authCode.code = randStr(20);
         res.json({success: true, code: user.authCode.code, userID: user.id})
     } else {
@@ -158,13 +204,17 @@ app.get('/permissions', (req, res) => {
         res.json({success: false, reason: "Malformed request"})
         return
     }
-    
-    if (!validAuthCode(userID, code)) {
+    const user = getUserbyID(userID);
+    if (user == undefined) {
+        res.json({success: false, reason: "User not found"})
+        return
+    }
+    if (!validAuthCode(user.authCode)) {
         res.json({success: false, reason: "Expired auth code"})
         return
     }
 
-    res.sendFile(path.join(__dirname, 'resources', 'permissions.html'))
+    res.render('permissions');
 });
 
 app.post('/permissions', (req, res) => {
@@ -182,6 +232,11 @@ app.post('/permissions', (req, res) => {
         res.json({success: false, redirect_uri: authRequest.redirect_uri, reason: "Malformed request"})
         return
     }
+    // did the user accept?
+    if (!accept) {
+        res.json({success: false, redirect_uri: authRequest.redirect_uri, reason: "User does not accept"})
+        return
+    }
     // check that user exists
     const user = getUserbyID(userID)
     if (user == null) {
@@ -191,15 +246,137 @@ app.post('/permissions', (req, res) => {
     // create temporary permissions code
     const curTime = Date.now();
     const perm = {
+        userID: userID,
+        clientID: authRequest.client_id,
         code: randStr(20),
         created: curTime,
-        min_expires: "3", // expires in 3 mins
+        min_expires: 3, // expires in 3 mins
         scope: authRequest.scope,
     }
     user.permissions.push(perm)
+    keyCodes.push(perm)
     res.json({success: true, redirect_uri: authRequest.redirect_uri, code: perm.code})
 })
 
-app.listen(port, () => {
-    console.log(`Provider listening at http://localhost:${port}`)
+app.post('/token', (req, res) => {
+    let auth, grant_type, redirect_uri, code;
+    try {
+        auth = req.header('Authorization')
+        grant_type = req.header('grant_type');
+        redirect_uri = req.header('redirect_uri');
+        code = req.header('code');
+    } catch(error) {
+        res.status = 400;
+        res.json({"error": "invalid_request"})
+        return
+    }
+    if (auth == undefined || grant_type == undefined || redirect_uri == undefined || code == undefined) {
+        res.status = 400;
+        res.json({"error": "invalid_request"})
+        return
+    }
+    // only accept authorization_code type
+    if (grant_type != "authorization_code") {
+        res.status = 400;
+        res.json({"error": "invalid_request"})
+        return
+    }
+    // check for authorization secret in providers
+    let matchingParty = null;
+    let keys = Object.keys(relyingParties)
+    for (let i = 0; i < keys.length; i++) {
+        const party = relyingParties[keys[i]];
+        if ('Basic ' + party.secret === auth) {
+            matchingParty = party;
+            break;
+        }
+    }
+    if (matchingParty === null) {
+        res.status = 400;
+        res.json({"error": "invalid_request"})
+        return
+    }
+    // look for keyCodes
+    let tempCode = null;
+    keyCodes.forEach((v) => {
+        // valid expiration
+        if (v.clientID == matchingParty.id && validAuthCode(v)) {
+            tempCode = v;
+        }
+    })
+    // validate request
+    if (tempCode === null || code != tempCode.code) {
+        res.status = 400;
+        res.json({"error": "invalid_request"})
+        return
+    }
+    // create JWT Token
+    const curTime = new Date(Date.now());
+    const expires = new Date(curTime.getTime() + 30*60000); // 30min from now
+    matchingParty.sub = randStr(25);
+    const contents = {
+        iss: `${providerURI}:${port}`,
+        sub: matchingParty.sub,
+        aud: matchingParty.clientID,
+        exp: expires.getTime(),
+        iat: curTime.getTime()
+    }
+    const token = jwt.sign(contents, PROVIDER_SECRET);
+    res.json({expires_in: contents.exp, id_token: token})
+})
+
+app.post('/userinfo', (req, res) => {
+    if (req.query.id_token == undefined) {
+        res.json({"error": "invalid_request"})
+        return
+    }
+    // decode JWT
+    const decoded = jwt.verify(req.query.id_token, PROVIDER_SECRET);
+    console.log(decoded)
+    // check expiration date
+    const curTime = new Date(Date.now());
+    if (decoded.exp <= curTime.getTime()) {
+        res.json({"error": "invalid_request"})
+        return
+    }
+    // identify the relying party
+    let matchingParty = null;
+    const keys = Object.keys(relyingParties);
+    for (let i = 0; i < keys.length; i++) {
+        const party = relyingParties[keys[i]];
+        if (party.sub === decoded.sub) {
+            matchingParty = party;
+            break;
+        }
+    }
+    if (matchingParty === null) {
+        // found no relying party to match JWT sub identifier
+        res.json({"error": "invalid_request", "reason": "no relying party found"})
+        return
+    }
+    // find user who gave permissions to relying party
+    let foundUser = null;
+    const ukeys = Object.keys(users);
+    for (let i = 0; i < ukeys.length; i++) {
+        const user = users[ukeys[i]];
+        for (let j = 0; j < user.permissions.length; j++) {
+            let p = user.permissions[j];
+            if (p.clientID === matchingParty.id) {
+                foundUser = user;
+                break;
+            }
+        }
+    }
+    if (foundUser === null) {
+        // no user permissions to give
+        res.json({"error": "invalid_request", "reason": "no user found"})
+        return
+    }
+    res.json({email: foundUser.email, username: foundUser.username})
+})
+
+const httpsServer = https.createServer(credentials, app);
+
+httpsServer.listen(port, () => {
+    console.log(`Provider listening at ${providerURI}:${port}`)
 })
