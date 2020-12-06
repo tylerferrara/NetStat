@@ -3,17 +3,35 @@ const app = express()
 const fs = require("fs");
 const path = require('path'); 
 const fetch = require('node-fetch');
-const port = 8081;
 const https = require('https');
 const privateKey  = fs.readFileSync(path.join(__dirname, 'certs/app.key'), 'utf8');
 const certificate = fs.readFileSync(path.join(__dirname, 'certs/app.cert'), 'utf8');
 const credentials = {key: privateKey, cert: certificate};
+
+// ENVIRONMENT VARS
+if (process.env.DEV_ENV == undefined) {
+    require('dotenv').config();
+}
 
 // NOTE: TLS is only used here to encrypt traffic.
 // official certs cannot be verified. Therefore, this 
 // demo will trust all certs as long as they are provided.
 // So cert attacks will not be allowed.
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+
+const DEV_ENV = process.env.DEV_ENV;
+let port = 80;
+let provPort = 80;
+let appURI = "";
+let providerURI = "";
+
+if (DEV_ENV) {
+    port = 8081;
+    provPort = 3000;
+    providerURI = "https://localhost";
+    appURI = "https://localhost";
+}
+
 
 app.use(express.static('views'))
 app.use(express.json());
@@ -23,11 +41,16 @@ app.set('view engine', 'ejs');
 const CLIENT_SECRET = "mysupersecretkey";
 
 app.get('/', (req, res) => {
-    res.render('index');
+    res.render('index', {
+        CONNECT_URI: `${appURI}:${port}/authenticating`
+    });
 }) 
 
 app.get('/authenticating', (req, res) => {
-    res.render('auth');
+    res.render('auth', {
+        APP_URI: `${appURI}:${port}`,
+        PROV_URI: `${providerURI}:${provPort}`
+    });
 })
 
 app.get('/account', (req, res) => {
@@ -37,14 +60,14 @@ app.get('/account', (req, res) => {
             code: req.query.code
         }
     } catch(e) {
-        res.redirect(`https://localhost:${port}/openid`);
+        res.redirect(`${appURI}:${port}/`);
         return
     }
     if (params.code === undefined) {
-        res.redirect(`https://localhost:${port}/openid`);
+        res.redirect(`${appURI}:${port}/`);
         return
     }
-    let uri = new URL("https://localhost:3000/token")
+    let uri = new URL(`${providerURI}:${provPort}/token`)
     fetch(uri, {
         method: 'POST',
         headers: {
@@ -52,14 +75,14 @@ app.get('/account', (req, res) => {
             'Authorization': 'Basic ' + CLIENT_SECRET,
             'grant_type': "authorization_code",
             'code': params.code,
-            'redirect_uri':`https://localhost:${port}/token`
+            'redirect_uri':`${appURI}:${port}/account`
         },
         rejectUnauthorized: false
     }).then(res => res.json())
     .then(data => {
         // exchange token for userInfo
         console.log(data)
-        let uri = new URL("https://localhost:3000/userinfo")
+        let uri = new URL(`${providerURI}:${provPort}/userinfo`)
         uri.search = new URLSearchParams({
             id_token: data.id_token
         }).toString();
@@ -86,5 +109,5 @@ app.get('/account', (req, res) => {
 const httpsServer = https.createServer(credentials, app);
 
 httpsServer.listen(port, () => {
-    console.log(`App listening at https://localhost:${port}`)
+    console.log(`App listening at ${appURI}:${port}`)
 })

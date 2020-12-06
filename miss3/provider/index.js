@@ -9,7 +9,10 @@ const privateKey  = fs.readFileSync(path.join(__dirname, 'certs/server.key'), 'u
 const certificate = fs.readFileSync(path.join(__dirname, 'certs/server.cert'), 'utf8');
 const credentials = {key: privateKey, cert: certificate};
 
-const DEV_ENV = true;
+// ENVIRONMENT VARS
+if (process.env.DEV_ENV == undefined) {
+    require('dotenv').config();
+}
 
 // NOTE: TLS is only used here to encrypt traffic.
 // official certs cannot be verified. Therefore, this 
@@ -17,12 +20,15 @@ const DEV_ENV = true;
 // So cert attacks will not be allowed.
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 
-let port = 3000;
+const DEV_ENV = process.env.DEV_ENV;
+let port = 80;
+let appPort = 80;
 let providerURI;
 let appURI;
 
 if (DEV_ENV) {
     port = 3000;
+    appPort = 8081
     providerURI = "https://localhost";
     appURI = "https://localhost";
 }
@@ -42,7 +48,7 @@ const staticRelyingParty = {
     id: "3913614092307123",
     secret: "mysupersecretkey",
     name: "Buy & Sell Guitars",
-    domain: `${appURI}:${DEV_ENV ? 80 : 8081}/`,
+    domain: `${appURI}:${appPort}/`,
     sub: null,
 }
 
@@ -144,7 +150,9 @@ app.get('/authenticate', (req, res) => {
     if (!checkAuthRequest(authRequest)) {
         res.send("Invalid format: ")
     }
-    res.render('login');
+    res.render('login', {
+        PROV_URI: `${providerURI}:${port}`
+    });
 });
 
 app.post('/authenticate', (req, res) => {
@@ -214,7 +222,9 @@ app.get('/permissions', (req, res) => {
         return
     }
 
-    res.render('permissions');
+    res.render('permissions', {
+        PROV_URI: `${providerURI}:${port}`
+    });
 });
 
 app.post('/permissions', (req, res) => {
@@ -326,13 +336,28 @@ app.post('/token', (req, res) => {
 })
 
 app.post('/userinfo', (req, res) => {
-    if (req.query.id_token == undefined) {
+    let id_token;
+    try {
+        id_token = req.query.id_token;
+    } catch(e) {
+        console.log(e);
+        res.json({"error": "invalid_request", "reason": "id_token not provided in request"})
+        return
+    }
+    if (id_token == undefined) {
         res.json({"error": "invalid_request"})
         return
     }
     // decode JWT
-    const decoded = jwt.verify(req.query.id_token, PROVIDER_SECRET);
-    console.log(decoded)
+    let decoded;
+    try {
+        decoded = jwt.verify(id_token, PROVIDER_SECRET);
+    } catch(e) {
+        console.log(e);
+        res.json({"error": "invalid_request", "reason": "JWT token couldn't be verified"})
+        return
+    }
+
     // check expiration date
     const curTime = new Date(Date.now());
     if (decoded.exp <= curTime.getTime()) {

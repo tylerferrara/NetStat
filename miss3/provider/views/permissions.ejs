@@ -11,10 +11,11 @@
     <div id="btn">
         <button onclick="handleUser(true)">Accept</button>
         <button onclick="handleUser(false)">Deny</button>
+        <div id="providerURI" data-uri=<%= PROV_URI %>></div>
     </div>
     <div id="response"></div>
     <script>
-        let providerURI = 'https://localhost:3000'
+        let providerURI = document.getElementById('providerURI').dataset.uri;
         // fetch params
         let params = {};
         const existingParams = new URLSearchParams(window.location.search);

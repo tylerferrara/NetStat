@@ -7,9 +7,11 @@
 </head>
 <body>
     <p>waiting for authentication...</p>
+    <div id="prov" data-uri=<%= PROV_URI %>></div>
+    <div id="app" data-uri=<%= APP_URI %>></div>
     <script>
-        let providerURI = "https://localhost:3000";
-        let appURI = "https://localhost:8081";
+        let providerURI = document.getElementById("prov").dataset.uri;
+        let appURI = document.getElementById("app").dataset.uri;
         // redirect user
         const STATIC_CLIENT_ID = "3913614092307123";
         let uri = new URL(providerURI + '/authenticate')
