@@ -19,15 +19,22 @@ if (process.env.DEV_ENV == undefined) {
 // So cert attacks will not be allowed.
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 
+// For password encryption
+const PASS_KEY = "-2mcbal3ubi2oacs,2ioghe,a;;caij"
+
 const DEV_ENV = process.env.DEV_ENV;
 let port = 80;
 let appPort = 80;
+let mrRobotPort = 80;
 let providerURI = "https://10.21.19.1";
 let appURI = "https://10.21.19.2";
+let mrRobotURI = "https://10.21.19.4"
 
 if (DEV_ENV == "true") {
     port = 3000;
     appPort = 8081
+    mrRobotPort = 4000;
+    mrRobotURI = "https://localhost";
     providerURI = "https://localhost";
     appURI = "https://localhost";
 }
@@ -37,19 +44,24 @@ app.use(express.json());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-const AUTHCODE_EXPIRATION = 5; // in minutes
+const AUTHCODE_EXPIRATION = 10; // in minutes
 const PROVIDER_SECRET = "aff92fnasflfk2fnv02hgms";
 
-const staticRelyingParty = {
-    id: "3913614092307123",
-    secret: "mysupersecretkey",
-    name: "Buy & Sell Guitars",
-    domain: `${appURI}:${appPort}/`,
-    sub: null,
-}
-
 const relyingParties = {
-    "3913614092307123": staticRelyingParty
+    "3913614092307123": {
+        id: "3913614092307123",
+        secret: "mysupersecretkey",
+        name: "Buy & Sell Guitars",
+        domain: `${appURI}:${appPort}/`,
+        sub: null,
+    },
+    "4923047502348671": {
+        id: "4923047502348671",
+        secret: "anotherwacksecret",
+        name: "Mr.Robot",
+        domain: `${mrRobotURI}:${mrRobotPort}/`,
+        sub: null,
+    }
 }
 
 const keyCodes = [];
@@ -110,11 +122,10 @@ function randStr(length) {
 }
 
 function getUser(username, password) {
-    const passkey = "-2mcbal3ubi2oacs,2ioghe,a;;caij"
     const keys = Object.keys(users);
     for (let i = 0; i < keys.length; i++) {
         const user = users[keys[i]];
-        const p = crypto.AES.decrypt(user.password, passkey).toString(crypto.enc.Utf8)
+        const p = crypto.AES.decrypt(user.password, PASS_KEY).toString(crypto.enc.Utf8)
         if (p == password && user.username == username) {
             return user;
         }
@@ -151,6 +162,36 @@ app.get('/authenticate', (req, res) => {
     });
 });
 
+app.post('/validatecookie', (req, res) => {
+    let cookie
+    try {
+        cookie = req.query.cookie;
+    } catch (error) {
+        res.json({success: false, reason: "Malformed request"})
+        return
+    }
+    // decode JWT
+    let decoded;
+    try {
+        decoded = jwt.verify(cookie, PROVIDER_SECRET);
+    } catch(e) {
+        console.log(e);
+        res.json({success: false, reason: "JWT token couldn't be verified"})
+        return
+    }
+    // validate
+    const user = users[decoded.userID]
+    if (user == undefined || user == null) {
+        res.json({success: false, reason: "No matching user"})
+        return
+    }
+    if (!validAuthCode(user.authCode)) {
+        res.json({success: false, reason: "Expired auth code"})
+        return
+    }
+    res.json({success: true, userID: decoded.userID, code: decoded.code})
+})
+
 app.post('/authenticate', (req, res) => {
     let authRequest;
     let username;
@@ -176,8 +217,14 @@ app.post('/authenticate', (req, res) => {
     if (user != null) {
         // generate auth code
         user.authCode.created = Date.now();
-        user.authCode.code = randStr(20);
-        res.json({success: true, code: user.authCode.code, userID: user.id})
+        user.authCode.code = randStr(20);   // set auth code
+        // create cookie for future logins
+        const cookie = jwt.sign({
+            code: user.authCode.code,
+            userID: user.id,
+        }, PROVIDER_SECRET);
+        // send response
+        res.json({success: true, code: user.authCode.code, userID: user.id, cookie: cookie})
     } else {
         res.json({success: false, reason: "Invalid credentials"})
     }
@@ -203,11 +250,12 @@ app.get('/permissions', (req, res) => {
             redirect_uri: req.query.redirect_uri,
         }
         userID = req.query.userID;
-        code = req.query.username;
+        code = req.query.code;
     } catch (error) {
         res.json({success: false, reason: "Malformed request"})
         return
     }
+    // didn't verify with temp code
     const user = getUserbyID(userID);
     if (user == undefined) {
         res.json({success: false, reason: "User not found"})
@@ -337,11 +385,11 @@ app.post('/userinfo', (req, res) => {
         id_token = req.query.id_token;
     } catch(e) {
         console.log(e);
-        res.json({"error": "invalid_request", "reason": "id_token not provided in request"})
+        res.json({error: "invalid_request", reason: "id_token not provided in request"})
         return
     }
     if (id_token == undefined) {
-        res.json({"error": "invalid_request"})
+        res.json({error: "invalid_request"})
         return
     }
     // decode JWT
@@ -350,14 +398,14 @@ app.post('/userinfo', (req, res) => {
         decoded = jwt.verify(id_token, PROVIDER_SECRET);
     } catch(e) {
         console.log(e);
-        res.json({"error": "invalid_request", "reason": "JWT token couldn't be verified"})
+        res.json({error: "invalid_request", reason: "JWT token couldn't be verified"})
         return
     }
 
     // check expiration date
     const curTime = new Date(Date.now());
     if (decoded.exp <= curTime.getTime()) {
-        res.json({"error": "invalid_request"})
+        res.json({error: "invalid_request"})
         return
     }
     // identify the relying party
@@ -372,7 +420,7 @@ app.post('/userinfo', (req, res) => {
     }
     if (matchingParty === null) {
         // found no relying party to match JWT sub identifier
-        res.json({"error": "invalid_request", "reason": "no relying party found"})
+        res.json({error: "invalid_request", reason: "no relying party found"})
         return
     }
     // find user who gave permissions to relying party
@@ -390,7 +438,7 @@ app.post('/userinfo', (req, res) => {
     }
     if (foundUser === null) {
         // no user permissions to give
-        res.json({"error": "invalid_request", "reason": "no user found"})
+        res.json({error: "invalid_request", reason: "no user found"})
         return
     }
     res.json({email: foundUser.email, username: foundUser.username})

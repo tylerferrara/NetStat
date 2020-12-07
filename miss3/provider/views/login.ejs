@@ -8,6 +8,7 @@
 </head>
 <body>
     <h1>Secure Login</h1>
+    <div id="redirect"></div>
     <input id="user" type="text" placeholder="username">
     <input id="pass" type="password" placeholder="password">
     <button onclick="handleSend()">Submit</button>
@@ -18,14 +19,59 @@
     <script src="crypto.js"></script>
     <script>
         let providerURI = document.getElementById('providerURI').dataset.uri;
+        // collect existing query params
+        let params = {};
+        const existingParams = new URLSearchParams(window.location.search);
+        for (const param of existingParams) {
+            params[param[0]] = param[1];
+        }
+        // share redirection
+        let redirect = document.getElementById('redirect');
+        let par = document.createElement('p');
+        par.innerHTML = "Will redirect back to " + params.redirect_uri;
+        redirect.appendChild(par)
+
+        // check for cookie to 'potentially' skip login
+        checkForCookie()
+
+        function saveCookie(cookie) {
+            // check if local storage is supported by browser
+            if (typeof(Storage) !== "undefined") {
+                window.localStorage.guitarCookie = cookie
+            }
+        }
+
+        function checkForCookie() {
+           // check if local storage is supported by browser
+           if (typeof(Storage) !== "undefined") {
+                const cookie = window.localStorage.guitarCookie;
+                if (cookie != undefined && cookie != null) {
+                    // got a cookie. Validate it
+                    let uri = new URL(providerURI + '/validatecookie')
+                    uri.search = new URLSearchParams({cookie: cookie}).toString();
+                    fetch(uri, {method: 'POST'})
+                    .then(res => res.json())
+                    .then(data => {
+                        console.log(data)
+                        if (data.success) {
+                            redirectUser(data.code, data.userID)
+                        }
+                    })
+                }
+            }
+        }
+
+        function redirectUser(code, userID) {
+            let uri = new URL(providerURI + '/permissions')
+            delete params["username"];
+            delete params["password"];
+            params["code"] = code;
+            params["userID"] = userID;
+            uri.search = new URLSearchParams(params).toString();
+            location.assign(uri);
+        }
 
         function handleSend() {
-            // collect existing query params
-            let params = {};
-            const existingParams = new URLSearchParams(window.location.search);
-            for (const param of existingParams) {
-                params[param[0]] = param[1];
-            }
             // add input values
             let userInput = document.getElementById("user");
             let passInput = document.getElementById("pass");
@@ -40,14 +86,10 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    // store cookie
+                    saveCookie(data.cookie)
                     // redirect the user
-                    let uri = new URL(providerURI + '/permissions')
-                    delete params["username"];
-                    delete params["password"];
-                    params["code"] = data.code;
-                    params["userID"] = data.userID;
-                    uri.search = new URLSearchParams(params).toString();
-                    location.assign(uri);
+                    redirectUser(data.code, data.userID)
                 } else {
                     // invalid request
                     let msgBox = document.getElementById("msgBox");

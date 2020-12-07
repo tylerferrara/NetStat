@@ -43,11 +43,11 @@
             });
 
         function handleUser(accepted) {
+            let submit_uri = new URL(providerURI + '/permissions')
+            params.accept = accepted;
+            submit_uri.search = new URLSearchParams(params).toString();
             if (accepted) {
-                let uri = new URL(providerURI + '/permissions')
-                params.accept = accepted;
-                uri.search = new URLSearchParams(params).toString();
-                fetch(uri, {method: 'POST'})
+                fetch(submit_uri, {method: 'POST'})
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {

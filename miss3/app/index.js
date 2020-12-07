@@ -79,6 +79,10 @@ app.get('/account', (req, res) => {
         rejectUnauthorized: false
     }).then(res => res.json())
     .then(data => {
+        if (data.error != undefined) {
+            res.redirect(`${appURI}:${port}`)
+            return
+        }
         // exchange token for userInfo
         console.log(data)
         let uri = new URL(`${providerURI}:${provPort}/userinfo`)
@@ -90,10 +94,16 @@ app.get('/account', (req, res) => {
         }).then(res => res.json())
         .then(data => {
             console.log(data)
-            res.render('account', {
-                FOUND_USERNAME: data.username,
-                FOUND_EMAIL: data.email
-            });
+            if (data.error == undefined) {
+                res.render('account', {
+                    FOUND_USERNAME: data.username,
+                    FOUND_EMAIL: data.email
+                });
+                return
+            } else {
+                res.redirect(`${appURI}:${port}`)
+                return
+            }
         }).catch(e => {
             console.log(e);
             res.send("Failed to obtain account info")
