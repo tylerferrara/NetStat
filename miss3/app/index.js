@@ -5,7 +5,7 @@ const path = require('path');
 const fetch = require('node-fetch');
 const https = require('https');
 const privateKey  = fs.readFileSync(path.join(__dirname, 'certs/app.key'), 'utf8');
-const certificate = fs.readFileSync(path.join(__dirname, 'certs/app.cert'), 'utf8');
+const certificate = fs.readFileSync(path.join(__dirname, 'certs/app.pem'), 'utf8');
 const credentials = {key: privateKey, cert: certificate};
 
 // ENVIRONMENT VARS
@@ -22,16 +22,15 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 const DEV_ENV = process.env.DEV_ENV;
 let port = 80;
 let provPort = 80;
-let appURI = "";
-let providerURI = "";
+let appURI = "https://10.21.19.2";
+let providerURI = "https://10.21.19.1";
 
-if (DEV_ENV) {
+if (DEV_ENV == "true") {
     port = 8081;
     provPort = 3000;
     providerURI = "https://localhost";
     appURI = "https://localhost";
 }
-
 
 app.use(express.static('views'))
 app.use(express.json());

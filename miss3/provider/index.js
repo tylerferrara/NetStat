@@ -6,14 +6,13 @@ const fs = require('fs');
 const https = require('https');
 const path = require('path'); 
 const privateKey  = fs.readFileSync(path.join(__dirname, 'certs/server.key'), 'utf8');
-const certificate = fs.readFileSync(path.join(__dirname, 'certs/server.cert'), 'utf8');
+const certificate = fs.readFileSync(path.join(__dirname, 'certs/server.pem'), 'utf8');
 const credentials = {key: privateKey, cert: certificate};
 
 // ENVIRONMENT VARS
 if (process.env.DEV_ENV == undefined) {
     require('dotenv').config();
 }
-
 // NOTE: TLS is only used here to encrypt traffic.
 // official certs cannot be verified. Therefore, this 
 // demo will trust all certs as long as they are provided.
@@ -23,18 +22,15 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 const DEV_ENV = process.env.DEV_ENV;
 let port = 80;
 let appPort = 80;
-let providerURI;
-let appURI;
+let providerURI = "https://10.21.19.1";
+let appURI = "https://10.21.19.2";
 
-if (DEV_ENV) {
+if (DEV_ENV == "true") {
     port = 3000;
     appPort = 8081
     providerURI = "https://localhost";
     appURI = "https://localhost";
 }
-
-
-
 
 app.use(express.static('views'))
 app.use(express.json());
