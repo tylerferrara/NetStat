@@ -9,6 +9,7 @@ const certificate = fs.readFileSync(path.join(__dirname, 'certs/hack.pem'), 'utf
 const credentials = {key: privateKey, cert: certificate};
 
 app.use(express.json());
+app.use(require('sanitize').middleware);;
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 

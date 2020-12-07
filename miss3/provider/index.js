@@ -39,7 +39,8 @@ if (DEV_ENV == "true") {
     appURI = "https://localhost";
 }
 
-app.use(express.static('views'))
+app.use(express.static('views'));
+app.use(require('sanitize').middleware);;
 app.use(express.json());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -179,17 +180,7 @@ app.post('/validatecookie', (req, res) => {
         res.json({success: false, reason: "JWT token couldn't be verified"})
         return
     }
-    // validate
-    const user = users[decoded.userID]
-    if (user == undefined || user == null) {
-        res.json({success: false, reason: "No matching user"})
-        return
-    }
-    if (!validAuthCode(user.authCode)) {
-        res.json({success: false, reason: "Expired auth code"})
-        return
-    }
-    res.json({success: true, userID: decoded.userID, code: decoded.code})
+    res.json({success: true, username: decoded.username})
 })
 
 app.post('/authenticate', (req, res) => {
@@ -220,8 +211,7 @@ app.post('/authenticate', (req, res) => {
         user.authCode.code = randStr(20);   // set auth code
         // create cookie for future logins
         const cookie = jwt.sign({
-            code: user.authCode.code,
-            userID: user.id,
+            username: username,
         }, PROVIDER_SECRET);
         // send response
         res.json({success: true, code: user.authCode.code, userID: user.id, cookie: cookie})
